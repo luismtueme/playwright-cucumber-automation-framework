@@ -18,6 +18,10 @@
       # Alternative runners (uncomment as needed):
       # runs-on: windows-latest
       # runs-on: macos-latest
+      permissions:
+        contents: read
+        pages: write
+        id-token: write
 
       steps:
         # Step 1: Checkout Repository
@@ -96,3 +100,5 @@
             publish_branch: gh-pages
             keep_files: false
             force_orphan: true
+            # Enable verbose logging for debugging
+            verbose: true
