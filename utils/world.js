@@ -27,6 +27,7 @@ class CustomWorld extends World {
                 viewport: null,
                 recordVideo: options.recordVideo || null,
             });
+            console.log(`Browser context created with video recording: ${options.recordVideo ? 'enabled' : 'disabled'}`);
             console.log("Browser context created successfully.");
             this.page = await this.context.newPage();
             console.log("New page created successfully.");

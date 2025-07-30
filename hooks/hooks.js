@@ -110,9 +110,10 @@ Before(async function (scenario) {
             
             // Enable video recording in all environments with proper directory setup
             const videoRecording = {
-                dir: 'videos/',
+                dir: path.resolve(process.cwd(), 'videos'),
                 size: { width: 1920, height: 1080 },
             };
+            console.log(`Video recording configured with dir: ${videoRecording.dir}`);
             
             await this.init(browserType, {
                 headless: headlessMode,
@@ -145,17 +146,25 @@ After(async function (scenario) {
 
         // Attach video if the scenario fails and video recording is enabled
         if (scenario.result.status === 'FAILED' && this.page && this.page.video) {
+            console.log('Video recording found, attempting to attach...');
             try {
                 const videoPath = await this.page.video().path();
-                // Wait a moment for video to be saved
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.log(`Video path: ${videoPath}`);
+                
+                // Explicitly save the video to ensure it's written to disk
+                // This will wait until the video is fully saved
+                await this.page.video().saveAs(videoPath);
+                console.log(`Video saved to: ${videoPath}`);
+                
+                // Add a small delay to ensure file system sync
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
                 if (fs.existsSync(videoPath)) {
                     const video = fs.readFileSync(videoPath);
                     await this.attach(video, 'video/webm');
                     console.log(`Video attached for failed scenario: ${videoPath}`);
                 } else {
-                    console.log('Video file not found, skipping video attachment');
+                    console.log('Video file not found after saving, skipping video attachment');
                 }
             } catch (videoError) {
                 console.log('Error attaching video:', videoError.message);
