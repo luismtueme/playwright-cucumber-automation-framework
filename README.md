@@ -70,7 +70,7 @@ This framework includes a pre-configured GitHub Actions workflow for CI/CD:
 - ✅ Automated testing on push/PR
 - ✅ Allure report generation and deployment
 - ✅ Caching for improved performance
-- 📖 See `.github/README.md` for detailed setup instructions
+- 📖 See `.github/GITHUB_ACTIONS_GUIDE.md` for detailed setup instructions
 
 ## ⚙️ Configuration
 
