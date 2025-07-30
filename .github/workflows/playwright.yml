@@ -1,0 +1,81 @@
+  name: Playwright Tests
+
+  on:
+    push:
+      branches: [main, master]
+    pull_request:
+      branches: [main, master]
+    # Uncomment to enable scheduled runs (daily at 4 AM UTC)
+#    schedule:
+#      - cron: '0 4 * * *'
+    # Uncomment to enable manual workflow triggers
+#    workflow_dispatch:
+
+  jobs:
+    test:
+      timeout-minutes: 60
+      runs-on: ubuntu-latest
+      # Alternative runners (uncomment as needed):
+      # runs-on: windows-latest
+      # runs-on: macos-latest
+
+      steps:
+        # Step 1: Checkout Repository
+        - name: Checkout Repository
+          uses: actions/checkout@v4
+
+        # Step 2: Set Up Node.js
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: lts/*
+
+        # Step 3: Restore Allure History
+        - name: Restore Allure History
+          uses: actions/cache/restore@v4
+          with:
+            path: allure-results/history
+            key: allure-history-${{ github.ref_name }}
+            restore-keys: allure-history-${{ github.ref_name }}-
+
+        # Step 4: Install Dependencies
+        - name: Install Dependencies
+          run: npm ci
+
+        # Step 5: Install Playwright Browsers
+        - name: Install Playwright Browsers
+          run: npx playwright install --with-deps
+
+        # Step 6: Run Playwright Tests
+        - name: Run Playwright Tests
+          run: npx cucumber-js
+          # Uncomment the line below to run only specific tags
+          # run: npx cucumber-js --tags "@Regression"
+
+        # Step 7: Generate Allure Report
+        - name: Generate Allure Report
+          run: |
+            npx allure generate ./allure-results --clean -o ./allure-report
+
+        # Step 8: Save Allure History
+        - name: Save Allure History
+          uses: actions/cache/save@v4
+          with:
+            path: allure-results/history
+            key: allure-history-${{ github.ref_name }}-${{ github.run_id }}
+
+        # Step 9: Disable Jekyll for GitHub Pages
+        - name: Disable Jekyll for GitHub Pages
+          run: echo "" > ./allure-report/.nojekyll
+
+        # Step 10: Deploy Allure Report to GitHub Pages
+        # Note: This step requires GitHub Pages to be enabled in your repository settings
+        # Go to Settings > Pages > Source: Deploy from a branch > Branch: gh-pages
+        - name: Deploy Allure Report to GitHub Pages
+          uses: peaceiris/actions-gh-pages@v4
+          with:
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+            publish_dir: ./allure-report
+            publish_branch: gh-pages
+            keep_files: false
+            force_orphan: true
