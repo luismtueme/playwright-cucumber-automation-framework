@@ -91,13 +91,13 @@
 
         # Step 11: Deploy Allure Report to GitHub Pages
         # Note: This step requires GitHub Pages to be enabled in your repository settings
-        # Go to Settings > Pages > Source: Deploy from a branch > Branch: gh-pages
+        # Go to Settings > Pages > Source: Deploy from a branch > Branch: main
         # Also requires a Personal Access Token with repo permissions to be added as a secret
         - name: Deploy Allure Report to GitHub Pages
           uses: peaceiris/actions-gh-pages@v4
           with:
             personal_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
             publish_dir: ./allure-report
-            publish_branch: gh-pages
-            keep_files: false
-            force_orphan: true
+            publish_branch: main
+            destination_dir: allure-report
+            keep_files: true
