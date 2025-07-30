@@ -101,13 +101,23 @@ Before(async function (scenario) {
             const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
             const headlessMode = isCI ? true : config.headless;
             
+            // Ensure videos directory exists for video recording
+            const videosDir = './videos';
+            if (!fs.existsSync(videosDir)) {
+                fs.mkdirSync(videosDir, { recursive: true });
+                console.log('Created videos directory for recording');
+            }
+            
+            // Enable video recording in all environments with proper directory setup
+            const videoRecording = {
+                dir: 'videos/',
+                size: { width: 1920, height: 1080 },
+            };
+            
             await this.init(browserType, {
                 headless: headlessMode,
                 args: ['--start-maximized'],
-                recordVideo: {
-                    dir: 'videos/',
-                    size: { width: 1920, height: 1080 },
-                },
+                recordVideo: videoRecording,
             });
 
         await this.context.tracing.start({ screenshots: true, snapshots: true });
@@ -133,22 +143,48 @@ After(async function (scenario) {
             await this.attach(screenshot, 'image/png');
         }
 
-        // Attach video if the scenario fails
+        // Attach video if the scenario fails and video recording is enabled
         if (scenario.result.status === 'FAILED' && this.page && this.page.video) {
-            const videoPath = await this.page.video().path();
-            const video = fs.readFileSync(videoPath);
-            await this.attach(video, 'video/webm');
+            try {
+                const videoPath = await this.page.video().path();
+                // Wait a moment for video to be saved
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                if (fs.existsSync(videoPath)) {
+                    const video = fs.readFileSync(videoPath);
+                    await this.attach(video, 'video/webm');
+                    console.log(`Video attached for failed scenario: ${videoPath}`);
+                } else {
+                    console.log('Video file not found, skipping video attachment');
+                }
+            } catch (videoError) {
+                console.log('Error attaching video:', videoError.message);
+            }
         }
 
         // Save trace for failed scenarios
         if (scenario.result.status === 'FAILED' && this.context) {
-            const tracePath = `./traces/${scenario.pickle.name.replace(/\s+/g, '_')}.zip`;
-            await this.context.tracing.stop({ path: tracePath });
-            console.log(`Trace saved for failed scenario: ${tracePath}`);
+            try {
+                // Ensure traces directory exists
+                const tracesDir = './traces';
+                if (!fs.existsSync(tracesDir)) {
+                    fs.mkdirSync(tracesDir, { recursive: true });
+                }
+                
+                const tracePath = `./traces/${scenario.pickle.name.replace(/\s+/g, '_')}.zip`;
+                await this.context.tracing.stop({ path: tracePath });
+                console.log(`Trace saved for failed scenario: ${tracePath}`);
 
-            // Attach the trace to Allure
-            const traceFile = fs.readFileSync(tracePath);
-            await this.attach(traceFile, 'application/zip', `${scenario.pickle.name.replace(/\s+/g, '_')}.zip`);
+                // Attach the trace to Allure
+                if (fs.existsSync(tracePath)) {
+                    const traceFile = fs.readFileSync(tracePath);
+                    await this.attach(traceFile, 'application/zip', `${scenario.pickle.name.replace(/\s+/g, '_')}.zip`);
+                } else {
+                    console.log('Trace file not found, skipping trace attachment');
+                }
+            } catch (traceError) {
+                console.log('Error saving trace:', traceError.message);
+            }
         } else if (this.context) {
             await this.context.tracing.stop(); // Stop tracing without saving for passed tests
         }
