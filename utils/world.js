@@ -12,8 +12,13 @@ class CustomWorld extends World {
     async init(browserType = 'chromium', options = {}) {
         try {
             console.log(`Launching browser: ${browserType}`);
+            
+            // Detect CI environment and force headless mode
+            const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+            const defaultHeadless = isCI ? true : false;
+            
             const browserLaunchOptions = {
-                headless: options.headless || false,
+                headless: options.headless !== undefined ? options.headless : defaultHeadless,
                 args: options.args || [],
             };
             this.browser = await { chromium, firefox, webkit }[browserType].launch(browserLaunchOptions);

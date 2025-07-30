@@ -49,6 +49,9 @@
         # Step 6: Run Playwright Tests
         - name: Run Playwright Tests
           run: npx cucumber-js
+          env:
+            CI: true
+            GITHUB_ACTIONS: true
           # Uncomment the line below to run only specific tags
           # run: npx cucumber-js --tags "@Regression"
 
