@@ -96,8 +96,13 @@ Before(async function (scenario) {
         if (!tags.includes('@api')) {
             console.log("Initializing browser...");
             const browserType = config.browserType;
+            
+            // Force headless mode in CI environments
+            const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+            const headlessMode = isCI ? true : config.headless;
+            
             await this.init(browserType, {
-                headless: config.headless,
+                headless: headlessMode,
                 args: ['--start-maximized'],
                 recordVideo: {
                     dir: 'videos/',
