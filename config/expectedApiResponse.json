@@ -1,0 +1,45 @@
+{
+  "exampleApiResponse": {
+    "status": "success",
+    "data": {
+      "id": 123,
+      "name": "Example Item",
+      "description": "This is an example response",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    },
+    "message": "Operation completed successfully"
+  },
+  "errorResponse": {
+    "status": "error",
+    "error": {
+      "code": "VALIDATION_ERROR",
+      "message": "Invalid input provided",
+      "details": [
+        {
+          "field": "email",
+          "message": "Email is required"
+        }
+      ]
+    }
+  },
+  "listResponse": {
+    "status": "success",
+    "data": [
+      {
+        "id": 1,
+        "name": "Item 1"
+      },
+      {
+        "id": 2,
+        "name": "Item 2"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 2,
+      "pages": 1
+    }
+  }
+}

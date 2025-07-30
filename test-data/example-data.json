@@ -1,0 +1,40 @@
+{
+  "exampleFormData": {
+    "inputField": {
+      "type": "textbox",
+      "selector": "#example-input",
+      "value": "test value"
+    },
+    "dropdownField": {
+      "type": "dropdown",
+      "selector": "#example-dropdown",
+      "value": "option1"
+    },
+    "checkboxField": {
+      "type": "checkbox",
+      "selector": "#example-checkbox",
+      "value": true
+    }
+  },
+  "testUsers": {
+    "validUser": {
+      "username": "testuser@example.com",
+      "password": "testpassword123"
+    },
+    "invalidUser": {
+      "username": "invalid@example.com",
+      "password": "wrongpassword"
+    }
+  },
+  "apiTestData": {
+    "endpoint": "/api/example",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "key": "value",
+      "number": 123
+    }
+  }
+} 

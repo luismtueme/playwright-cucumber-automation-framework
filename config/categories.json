@@ -1,0 +1,47 @@
+{
+  "testCategories": {
+    "smoke": {
+      "description": "Critical functionality tests",
+      "tags": ["@Smoke"],
+      "priority": "High"
+    },
+    "regression": {
+      "description": "Comprehensive functionality tests",
+      "tags": ["@Regression"],
+      "priority": "Medium"
+    },
+    "api": {
+      "description": "API integration tests",
+      "tags": ["@API"],
+      "priority": "High"
+    },
+    "ui": {
+      "description": "User interface tests",
+      "tags": ["@UI"],
+      "priority": "Medium"
+    },
+    "performance": {
+      "description": "Performance and load tests",
+      "tags": ["@Performance"],
+      "priority": "Low"
+    }
+  },
+  "environments": {
+    "dev": {
+      "url": "https://dev.example.com",
+      "description": "Development environment"
+    },
+    "qa": {
+      "url": "https://qa.example.com",
+      "description": "Quality assurance environment"
+    },
+    "staging": {
+      "url": "https://staging.example.com",
+      "description": "Staging environment"
+    },
+    "prod": {
+      "url": "https://example.com",
+      "description": "Production environment"
+    }
+  }
+}

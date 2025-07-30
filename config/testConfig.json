@@ -1,0 +1,33 @@
+{
+  "browserType": "chromium",
+  "headless": false,
+  "url": "https://example.com",
+  "username": "your-username",
+  "password": "your-password",
+  "invalidUsername": "invalid-user",
+  "invalidPassword": "invalid-password",
+  "enableTestRail": false,
+  "dbConfig": {
+    "host": "your-db-host",
+    "user": "your-db-username",
+    "password": "your-db-password",
+    "database": "your-database-name",
+    "port": 3306
+  },
+  "apiConfig": {
+    "baseUrl": "https://api.example.com",
+    "timeout": 5000,
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    },
+    "username": "your-api-username",
+    "password": "your-api-password"
+  },
+  "api": {
+    "baseURL": "https://api.example.com",
+    "authEndpoint": "/api/auth",
+    "apiKey": "your-api-key-here",
+    "projectsEndpoint": "/api/projects"
+  }
+}
