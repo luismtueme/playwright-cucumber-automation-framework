@@ -151,20 +151,26 @@ After(async function (scenario) {
                 const videoPath = await this.page.video().path();
                 console.log(`Video path: ${videoPath}`);
                 
-                // Explicitly save the video to ensure it's written to disk
-                // This will wait until the video is fully saved
-                await this.page.video().saveAs(videoPath);
-                console.log(`Video saved to: ${videoPath}`);
-                
-                // Add a small delay to ensure file system sync
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                if (fs.existsSync(videoPath)) {
-                    const video = fs.readFileSync(videoPath);
-                    await this.attach(video, 'video/webm');
-                    console.log(`Video attached for failed scenario: ${videoPath}`);
+                // In CI environments, skip video saving to avoid hanging
+                const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
+                if (isCI) {
+                    console.log('CI environment detected, skipping video save to avoid hanging...');
+                    console.log('Videos will be available as artifacts from the browser context');
                 } else {
-                    console.log('Video file not found after saving, skipping video attachment');
+                    // Local environment - use normal saveAs
+                    await this.page.video().saveAs(videoPath);
+                    console.log(`Video saved to: ${videoPath}`);
+                    
+                    // Add a small delay to ensure file system sync
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    if (fs.existsSync(videoPath)) {
+                        const video = fs.readFileSync(videoPath);
+                        await this.attach(video, 'video/webm');
+                        console.log(`Video attached for failed scenario: ${videoPath}`);
+                    } else {
+                        console.log('Video file not found after saving, skipping video attachment');
+                    }
                 }
             } catch (videoError) {
                 console.log('Error attaching video:', videoError.message);
