@@ -41,43 +41,7 @@ module.exports = async () => {
 };
 
 function createCategoriesFile() {
-    const categories = [
-        {
-            name: "Critical Path",
-            description: "Tests covering critical functionality.",
-            matchedStatuses: ["passed"],
-            traceRegex: ".*critical-path.*"
-        },
-        {
-            name: "Smoke Tests",
-            description: "Tests that validate the core functionality.",
-            matchedStatuses: ["passed"],
-            traceRegex: ".*smoke.*"
-        },
-        {
-            name: "Flaky Test",
-            description: "Tests that fail intermittently.",
-            matchedStatuses: ["failed"],
-            traceRegex: ".*Timeout.*"
-        },
-        {
-            name: "Infrastructure Problem",
-            description: "Issues caused by environment or CI/CD failures.",
-            matchedStatuses: ["failed"],
-            traceRegex: ".*ECONNREFUSED|ECONNRESET.*"
-        },
-        {
-            name: "Application Bug",
-            description: "Failures due to application bugs.",
-            matchedStatuses: ["failed"],
-            messageRegex: ".*AssertionError.*"
-        },
-        {
-            name: "Unknown",
-            description: "Uncategorized failures.",
-            matchedStatuses: ["failed"]
-        }
-    ];
+    const categories = require('./allureCategories');
 
     const allureResultsPath = path.resolve(__dirname, '../allure-results');
     const categoriesPath = path.join(allureResultsPath, 'categories.json');

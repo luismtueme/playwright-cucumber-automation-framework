@@ -2,7 +2,9 @@ const { Before, After,AfterAll,BeforeAll, setDefaultTimeout } = require('@cucumb
 const fs = require('fs');
 const path = require('path');
 const config = require('../config/testConfig.json')
+const allureCategories = require('../utils/allureCategories');
 require('../utils/world');
+require('../utils/stepErrorStatus');
 
 setDefaultTimeout(60000); // Set default timeout to 60 seconds
 
@@ -38,11 +40,9 @@ BeforeAll(() => {
 
     // Add Categories in the report
     try {
-        const categoriesPath = path.resolve(__dirname, "../config/categories.json");
         const destinationPath = path.join(allureResultsPath, "categories.json");
-        const categories = fs.readFileSync(categoriesPath, "utf-8");
-        fs.writeFileSync(destinationPath, categories);
-        console.log("Categories file loaded and written to allure-results.");
+        fs.writeFileSync(destinationPath, JSON.stringify(allureCategories, null, 2));
+        console.log("Categories file written to allure-results.");
     } catch (error) {
         console.error("Error loading categories:", error.message);
         throw error;
