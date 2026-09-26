@@ -5,7 +5,11 @@
   "scripts": {
     "test:cucumber": "cucumber-js",
     "test:playwright": "playwright test",
-    "test": "npm run test:cucumber"
+    "test": "npm run test:playwright && npm run test:cucumber",
+    "check": "node utils/validateSteps.js && playwright test --list"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "keywords": [
     "playwright",

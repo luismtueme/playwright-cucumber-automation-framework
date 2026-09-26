@@ -40,9 +40,9 @@ module.exports = defineConfig({
       ['list'],
       ['allure-playwright'],
       ['html', {
-        outputFolder: 'html-report'
-      }],
-      ['html']
+        outputFolder: 'html-report',
+        open: 'never'
+      }]
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -51,7 +51,7 @@ module.exports = defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    headless: false, // Run tests in headless mode
+    headless: !!process.env.CI, // Headless in CI, headed locally
     screenshot: 'only-on-failure', // Take screenshot only when a test fails
     video: 'retain-on-failure' // Capture video only when a test fails
   },

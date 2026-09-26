@@ -10,25 +10,26 @@
  */
 
 const { test, expect } = require('@playwright/test');
+const { getAppUrl } = require('../utils/appUrl');
 
 // Example test spec - replace with your actual tests
 test.describe('Example Test Suite', () => {
     test.beforeEach(async ({ page }) => {
         // Setup before each test
-        await page.goto('https://example.com');
+        await page.goto(getAppUrl());
     });
 
     test('should navigate to the application', async ({ page }) => {
         // Example test - replace with your actual test logic
-        await expect(page).toHaveTitle(/Example/);
+        await expect(page).toHaveTitle(/Example Application/);
     });
 
     test('should interact with a form', async ({ page }) => {
         // Example test - replace with your actual test logic
         await page.fill('#example-input', 'test value');
         await page.click('#submit-button');
-        
-        await expect(page.locator('#success-message')).toBeVisible();
+
+        await expect(page.locator('#message')).toHaveText('Form submitted successfully');
     });
 
     test('should verify page elements', async ({ page }) => {

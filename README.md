@@ -67,9 +67,9 @@ A robust automation framework built with Playwright and Cucumber for web applica
 
 ### 🚀 **GitHub Actions (Optional)**
 This framework includes a pre-configured GitHub Actions workflow for CI/CD:
-- ✅ Automated testing on push/PR
-- ✅ Allure report generation and deployment
-- ✅ Caching for improved performance
+- ✅ Required PR checks: dependency audit, step-definition validation, and the full test suite (a failing test fails the PR)
+- ✅ Allure report generation and deployment to GitHub Pages from `main` (no personal access token needed)
+- ✅ Dependabot updates for npm packages and GitHub Actions
 - 📖 See `.github/GITHUB_ACTIONS_GUIDE.md` for detailed setup instructions
 
 ## ⚙️ Configuration
@@ -87,6 +87,8 @@ Edit `config/testConfig.json` with your application details:
   "password": "your-password"
 }
 ```
+
+Out of the box, `url` points to `test-fixtures/example-app.html`, a local page the example tests run against. Paths without a protocol are opened as local files. You can also override the URL per run with the `BASE_URL` environment variable.
 
 ### 2. Environment Setup
 
@@ -126,6 +128,12 @@ npm run test:playwright
 ```bash
 npm test
 ```
+
+### Validate Without Running (same as the CI `Checks` job)
+```bash
+npm run check
+```
+Fails on undefined or ambiguous Cucumber steps and on Playwright specs that can't be loaded.
 
 ### Run Specific Feature
 ```bash

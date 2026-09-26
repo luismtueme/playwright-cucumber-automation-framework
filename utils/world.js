@@ -1,9 +1,12 @@
 const { setWorldConstructor, World } = require('@cucumber/cucumber');
 const { chromium, firefox, webkit } = require('@playwright/test');
+const testConfig = require('../config/testConfig.json');
+const { getAppUrl } = require('./appUrl');
 
 class CustomWorld extends World {
     constructor(options) {
         super(options);
+        this.config = { ...testConfig, url: getAppUrl() };
         this.browser = null;
         this.context = null;
         this.page = null;

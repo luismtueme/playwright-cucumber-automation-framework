@@ -14,7 +14,9 @@ module.exports = {
         paths: ["features/**/*.feature"],
         require: ["step_definitions/**/*.js", "hooks/hooks.js"],
         format: [
-            "allure-cucumberjs/reporter"
+            "summary",
+            // Allure writes its results to allure-results/; the stream path keeps it off stdout
+            ["allure-cucumberjs/reporter", "allure-results/.cucumber-reporter.log"]
         ],
         formatOptions: {
             snippetInterface: "async-await",

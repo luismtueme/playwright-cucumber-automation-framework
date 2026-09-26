@@ -19,8 +19,9 @@ Given('I navigate to the application', async function() {
 });
 
 Given('I am on the application page', async function() {
-    // Verify you are on the correct page
-    await expect(this.page).toHaveTitle(/.*/);
+    // Open the application and verify you are on the correct page
+    await this.page.goto(this.config.url);
+    await expect(this.page).toHaveTitle(/Example Application/);
 });
 
 When('I perform an example action', async function() {

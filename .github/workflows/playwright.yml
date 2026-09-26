@@ -1,103 +1,175 @@
-  name: Playwright Tests
+name: Playwright Tests
 
-  on:
-    push:
-      branches: [main, master]
-    pull_request:
-      branches: [main, master]
-    # Uncomment to enable scheduled runs (daily at 4 AM UTC)
-#    schedule:
-#      - cron: '0 4 * * *'
-    # Uncomment to enable manual workflow triggers
-#    workflow_dispatch:
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  # Uncomment to enable scheduled runs (daily at 4 AM UTC)
+  # schedule:
+  #   - cron: '0 4 * * *'
 
-  jobs:
-    test:
-      timeout-minutes: 60
-      runs-on: ubuntu-latest
-      # Alternative runners (uncomment as needed):
-      # runs-on: windows-latest
-      # runs-on: macos-latest
-      permissions:
-        contents: read
-        pages: write
-        id-token: write
+# Least privilege by default; jobs that need more ask for it explicitly
+permissions:
+  contents: read
 
-      steps:
-        # Step 1: Checkout Repository
-        - name: Checkout Repository
-          uses: actions/checkout@v4
+# A newer push to the same PR cancels the older run; runs on main always finish
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-        # Step 2: Set Up Node.js
-        - name: Set up Node.js
-          uses: actions/setup-node@v4
-          with:
-            node-version: lts/*
+env:
+  NODE_VERSION: 22
 
-        # Step 3: Restore Allure History
-        - name: Restore Allure History
-          uses: actions/cache/restore@v4
-          with:
-            path: allure-results/history
-            key: allure-history-${{ github.ref_name }}
-            restore-keys: allure-history-${{ github.ref_name }}-
+jobs:
+  # Fast gate: dependency audit, undefined/ambiguous Cucumber steps, Playwright spec discovery
+  check:
+    name: Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
 
-        # Step 4: Install Dependencies
-        - name: Install Dependencies
-          run: npm ci
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-        # Step 5: Install Playwright Browsers
-        - name: Install Playwright Browsers
-          run: npx playwright install --with-deps
+      - name: Install Dependencies
+        run: npm ci
 
-        # Step 6: Run Playwright Tests
-        - name: Run Playwright Tests
-          continue-on-error: true
-          run: npx cucumber-js
-          env:
-            CI: true
-            GITHUB_ACTIONS: true
-          # Uncomment the line below to run only specific tags
-          # run: npx cucumber-js --tags "@Regression"
+      - name: Audit Dependencies (high and critical)
+        run: npm audit --audit-level=high
 
-        # Step 7: Upload Test Artifacts
-        - name: Upload Test Artifacts
-          uses: actions/upload-artifact@v4
-          if: always()
-          with:
-            name: test-artifacts
-            path: |
-              videos/
-              traces/
-              screenshots/
-              allure-results/
-            retention-days: 30
+      - name: Validate Test Definitions
+        run: npm run check
 
-        # Step 8: Generate Allure Report
-        - name: Generate Allure Report
-          run: |
-            npx allure generate ./allure-results --clean -o ./allure-report
+  test:
+    name: Tests
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: true
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
 
-        # Step 9: Save Allure History
-        - name: Save Allure History
-          uses: actions/cache/save@v4
-          with:
-            path: allure-results/history
-            key: allure-history-${{ github.ref_name }}-${{ github.run_id }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-        # Step 10: Disable Jekyll for GitHub Pages
-        - name: Disable Jekyll for GitHub Pages
-          run: echo "" > ./allure-report/.nojekyll
+      - name: Install Dependencies
+        run: npm ci
 
-        # Step 11: Deploy Allure Report to GitHub Pages
-        # Note: This step requires GitHub Pages to be enabled in your repository settings
-        # Go to Settings > Pages > Source: Deploy from a branch > Branch: main
-        # Also requires a Personal Access Token with repo permissions to be added as a secret
-        - name: Deploy Allure Report to GitHub Pages
-          uses: peaceiris/actions-gh-pages@v4
-          with:
-            personal_token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
-            publish_dir: ./allure-report
-            publish_branch: main
-            destination_dir: allure-report
-            keep_files: true
+      # Only the browsers the suites use (chromium for Cucumber, firefox for Playwright)
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium firefox
+
+      # Playwright runs first: its global setup clears allure-results
+      - name: Run Playwright Tests
+        run: npm run test:playwright
+
+      # Runs even if Playwright failed, so both suites always report; the job still fails
+      - name: Run Cucumber Tests
+        if: ${{ !cancelled() }}
+        run: npm run test:cucumber
+        # Uncomment to run only specific tags
+        # run: npx cucumber-js --tags "@Regression"
+
+      - name: Upload Test Artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-artifacts
+          path: |
+            videos/
+            traces/
+            screenshots/
+            test-results/
+            html-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Allure Results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-results
+          path: allure-results/
+          include-hidden-files: true
+          retention-days: 14
+
+  # Publishes the Allure report to GitHub Pages, only for pushes to main (never for PRs)
+  report:
+    name: Publish Allure Report
+    needs: test
+    if: ${{ !cancelled() && needs.test.result != 'skipped' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}allure-report/
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Download Allure Results
+        uses: actions/download-artifact@v8
+        with:
+          name: allure-results
+          path: allure-results/
+
+      - name: Restore Allure History
+        uses: actions/cache/restore@v6
+        with:
+          path: allure-history
+          key: allure-history-${{ github.run_id }}
+          restore-keys: allure-history-
+
+      - name: Generate Allure Report
+        run: |
+          if [ -d allure-history ]; then
+            mkdir -p allure-results/history && cp -r allure-history/. allure-results/history/
+          fi
+          npx allure generate ./allure-results --clean -o ./_site/allure-report
+          # Carry trend history forward to the next run
+          rm -rf allure-history && cp -r ./_site/allure-report/history allure-history
+          # Site root redirects to the report
+          printf '<!DOCTYPE html><meta http-equiv="refresh" content="0; url=allure-report/"><a href="allure-report/">Allure report</a>\n' > ./_site/index.html
+
+      - name: Save Allure History
+        uses: actions/cache/save@v6
+        with:
+          path: allure-history
+          key: allure-history-${{ github.run_id }}
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./_site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

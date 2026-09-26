@@ -1,7 +1,7 @@
 {
   "browserType": "chromium",
   "headless": false,
-  "url": "https://example.com",
+  "url": "test-fixtures/example-app.html",
   "username": "your-username",
   "password": "your-password",
   "invalidUsername": "invalid-user",

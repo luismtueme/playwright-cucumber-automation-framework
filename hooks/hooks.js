@@ -59,8 +59,8 @@ BeforeAll(() => {
                 type: "CI/CD",
                 url: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions`,
                 buildName: `GitHub Actions Build #${process.env.GITHUB_RUN_NUMBER}`,
-                buildUrl: process.env.GITHUB_RUN_URL,
-                reportUrl: `https://${process.env.GITHUB_REPOSITORY_OWNER}.github.io/${process.env.GITHUB_REPOSITORY}/allure-report/`,
+                buildUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+                reportUrl: `https://${process.env.GITHUB_REPOSITORY_OWNER}.github.io/${(process.env.GITHUB_REPOSITORY || '').split('/')[1]}/allure-report/`,
                 infrastructure: "GitHub Actions",
                 environment: process.env.TEST_ENV || "QA",
             }
