@@ -21,7 +21,7 @@
   "license": "MIT",
   "description": "A Playwright-Cucumber automation framework template",
   "devDependencies": {
-    "@cucumber/cucumber": "^11.0.1",
+    "@cucumber/cucumber": "^13.2.1",
     "@playwright/test": "^1.48.1",
     "@types/node": "^22.7.6",
     "allure-commandline": "^2.46.1",
