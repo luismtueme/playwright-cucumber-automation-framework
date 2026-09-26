@@ -265,12 +265,10 @@ const testData = DataReader.readJson('test-data/example-data.json');
 
 ## 📊 Reporting
 
-### Cucumber HTML Report
-Reports are generated automatically in the project root:
-- `cucumber_report.html` - HTML report
-- `cucumber_report.json` - JSON report
-
 ### Allure Reports
+Both suites write to `allure-results/`. For Cucumber scenarios the report shows each Gherkin step with its status, the failing step's error and line number, and a screenshot and Playwright trace for failed scenarios (under the scenario's "Tear down" section). Assertion failures show as **failed** and test-code errors as **broken**, grouped by the categories in `utils/allureCategories.js`.
+
+
 Generate and view Allure reports:
 
 1. **Install Allure Command Line Tool** (if not already installed):
