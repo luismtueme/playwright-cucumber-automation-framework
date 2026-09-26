@@ -18,9 +18,10 @@ test('redact masks credentials at any depth and keeps other fields', () => {
 });
 
 test('logger only prints messages at or above its level', (t) => {
+    /** @type {string[]} */
     const printed = [];
-    t.mock.method(console, 'log', (message) => printed.push(message));
-    t.mock.method(console, 'warn', (message) => printed.push(message));
+    t.mock.method(console, 'log', (/** @type {string} */ message) => printed.push(message));
+    t.mock.method(console, 'warn', (/** @type {string} */ message) => printed.push(message));
     const log = createLogger('unit', 'warn');
     log.debug('hidden');
     log.info('hidden');

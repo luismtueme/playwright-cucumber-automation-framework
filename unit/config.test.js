@@ -2,6 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { buildConfig, requireCredentials, DEMO_CREDENTIALS } = require('../config');
 
+/** @type {import('../config').Defaults} */
 const defaults = {
     baseUrl: '',
     environment: 'local',
@@ -70,6 +71,7 @@ test('config is immutable', () => {
     const config = buildConfig({}, defaults);
     assert.throws(() => {
         'use strict';
+        // @ts-expect-error: assigning to a read-only property is the point of this test
         config.baseUrl = 'changed';
     }, TypeError);
 });

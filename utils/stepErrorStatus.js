@@ -8,6 +8,7 @@
  * Playwright assertion errors as AssertionError, keeping message and stack.
  */
 class AssertionError extends Error {
+    /** @param {Error & { matcherResult?: unknown }} original */
     constructor(original) {
         super(original.message);
         this.name = 'AssertionError';
@@ -16,12 +17,18 @@ class AssertionError extends Error {
     }
 }
 
+/**
+ * @template {(...args: any[]) => any} F
+ * @param {F} fn Step or hook function
+ * @returns {F}
+ */
 function wrapStepFunction(fn) {
+    /** @this {unknown} @param {...unknown} args */
     const wrapped = async function (...args) {
         try {
             return await fn.apply(this, args);
         } catch (error) {
-            if (error && typeof error === 'object' && 'matcherResult' in error) {
+            if (error instanceof Error && 'matcherResult' in error) {
                 throw new AssertionError(error);
             }
             throw error;
@@ -29,7 +36,7 @@ function wrapStepFunction(fn) {
     };
     // Cucumber uses the function's arity to validate step parameters
     Object.defineProperty(wrapped, 'length', { value: fn.length });
-    return wrapped;
+    return /** @type {F} */ (/** @type {unknown} */ (wrapped));
 }
 
 module.exports = { AssertionError, wrapStepFunction };

@@ -8,6 +8,6 @@ module.exports = {
     /** Base URL of the app under test (the demo app's URL when BASE_URL is empty) */
     baseUrl: '',
     apiBaseUrl: '',
-    /** @type {import('./dbClient').DbClient | null} */
+    /** @type {InstanceType<typeof import('./dbClient').DbClient> | null} */
     db: null,
 };

@@ -10,6 +10,7 @@ const categories = require('./allureCategories');
 
 const RESULTS_DIR = path.join(ROOT, 'allure-results');
 
+/** @param {string} [baseUrl] */
 function environmentProperties(baseUrl) {
     const entries = {
         Environment: config.environment,
@@ -31,7 +32,7 @@ function executor() {
     if (GITHUB_ACTIONS !== 'true') {
         return { name: 'Local', type: 'local', buildName: `Local run ${new Date().toISOString()}` };
     }
-    const [owner, repo] = GITHUB_REPOSITORY.split('/');
+    const [owner, repo] = (GITHUB_REPOSITORY ?? '/').split('/');
     return {
         name: 'GitHub Actions',
         type: 'github',

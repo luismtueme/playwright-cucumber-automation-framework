@@ -4,6 +4,7 @@ const { BasePage } = require('./BasePage');
 class LoginPage extends BasePage {
     static path = '/login';
 
+    /** @param {import('@playwright/test').Page} page */
     constructor(page) {
         super(page);
         this.username = page.getByLabel('Username');
@@ -13,6 +14,7 @@ class LoginPage extends BasePage {
         this.welcome = page.getByText(/^Welcome, /);
     }
 
+    /** @param {string} username @param {string} password */
     async login(username, password) {
         await this.username.fill(username);
         await this.password.fill(password);

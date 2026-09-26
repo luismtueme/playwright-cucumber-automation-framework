@@ -37,7 +37,11 @@
                 });
                 const body = await response.json();
 
-                if (response.ok) {
+                // Only same-site paths, never "//other-host"
+                const next = new URLSearchParams(location.search).get('next');
+                if (response.ok && next && next.startsWith('/') && !next.startsWith('//')) {
+                    location.assign(next);
+                } else if (response.ok) {
                     document.getElementById('login-form').hidden = true;
                     welcome.textContent = `Welcome, ${body.user.username}`;
                     welcome.hidden = false;

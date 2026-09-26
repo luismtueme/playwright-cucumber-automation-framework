@@ -44,6 +44,9 @@ jobs:
       - name: Lint and Format Check
         run: npm run lint
 
+      - name: Type Check
+        run: npm run typecheck
+
       - name: Audit Dependencies (high and critical)
         run: npm audit --audit-level=high
 
@@ -108,6 +111,11 @@ jobs:
         run: npm run test:cucumber
         # Uncomment to run only specific tags
         # run: npx cucumber-js --tags "@Regression"
+
+      # Every test must delete what it creates; fails the job if rows are left behind
+      - name: Check for Leftover Test Data
+        if: ${{ !cancelled() }}
+        run: node utils/checkLeftoverData.js
 
       - name: Upload Test Artifacts
         if: ${{ !cancelled() }}

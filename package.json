@@ -21,6 +21,7 @@
     "test:unit": "node --test \"unit/*.test.js\"",
     "check": "node utils/validateSteps.js && playwright test --list",
     "lint": "eslint . && prettier --check .",
+    "typecheck": "tsc -p .",
     "format": "prettier --write . && eslint --fix .",
     "clean": "node utils/allureMetadata.js clean",
     "demo": "node demo-app/server.js",
@@ -39,6 +40,7 @@
     "eslint-plugin-playwright": "^2.12.0",
     "globals": "^17.12.0",
     "mysql2": "^3.11.3",
-    "prettier": "^3.9.9"
+    "prettier": "^3.9.9",
+    "typescript": "^7.0.2"
   }
 }

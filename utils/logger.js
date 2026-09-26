@@ -4,10 +4,24 @@
  */
 const { config } = require('../config');
 
+/** @typedef {'error' | 'warn' | 'info' | 'debug'} Level */
+/** @typedef {(message: string, ...details: unknown[]) => void} LogFn */
+
+/** @type {Record<Level, number>} */
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
 
+/**
+ * @param {string} scope Shown in every line, e.g. "[INFO] [api] ..."
+ * @param {string} [level] Defaults to LOG_LEVEL
+ * @returns {Record<Level, LogFn>}
+ */
 function createLogger(scope, level = config.logLevel) {
-    const threshold = LEVELS[level] ?? LEVELS.warn;
+    const threshold = LEVELS[/** @type {Level} */ (level)] ?? LEVELS.warn;
+    /**
+     * @param {Level} name
+     * @param {'error' | 'warn' | 'log'} method
+     * @returns {LogFn}
+     */
     const write =
         (name, method) =>
         (message, ...details) => {

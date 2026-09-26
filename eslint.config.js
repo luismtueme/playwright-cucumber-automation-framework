@@ -29,6 +29,8 @@ module.exports = [
         // Playwright best-practice rules for specs (no hard waits, no focused tests, awaited expects)
         ...playwright.configs['flat/recommended'],
         files: ['tests/**/*.js'],
+        // auth.setup.js names its test function `setup`
+        settings: { playwright: { globalAliases: { test: ['setup'] } } },
         rules: {
             ...playwright.configs['flat/recommended'].rules,
             'playwright/no-wait-for-timeout': 'error',

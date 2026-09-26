@@ -11,7 +11,8 @@ const links = config.jiraBaseUrl
     ? {
           jira: {
               pattern: [/^@jira:(.*)$/],
-              urlTemplate: (value) => `${config.jiraBaseUrl}/browse/${value.replace('@jira:', '')}`,
+              urlTemplate: (/** @type {string} */ value) =>
+                  `${config.jiraBaseUrl}/browse/${value.replace('@jira:', '')}`,
           },
       }
     : {};

@@ -1,24 +1,25 @@
-const { Given, When, Then } = require('@cucumber/cucumber');
+const { Given, When, Then } = require('../utils/steps');
 const { expect } = require('@playwright/test');
-const { requireCredentials } = require('../config');
 const { ApiClient } = require('../utils/apiClient');
 const runtime = require('../utils/cucumberRuntime');
 
 Given('I am authenticated with the API', async function () {
-    const { username, password } = requireCredentials(this.config);
-    const api = await this.api();
-    await api.login(username, password);
+    await this.authedApi();
 });
 
 When('I create an item named {string}', async function (name) {
     const api = await this.api();
-    this.response = await api.post('/api/items', { name });
-    if (this.response.status === 201) this.createdItem = this.response.body;
+    const response = await api.post('/api/items', { name });
+    this.response = response;
+    if (response.status === 201) {
+        this.createdItem = response.body;
+        this.cleanUpItem(response.body);
+    }
 });
 
 When('I delete the created item', async function () {
     const api = await this.api();
-    this.response = await api.delete(`/api/items/${this.createdItem.id}`);
+    this.response = await api.delete(`/api/items/${this.lastItem.id}`);
 });
 
 When('I list the items without authenticating', async function () {
@@ -31,16 +32,16 @@ When('I list the items without authenticating', async function () {
 });
 
 Then('the response status is {int}', function (status) {
-    expect(this.response.status, JSON.stringify(this.response.body)).toBe(status);
+    expect(this.lastResponse.status, JSON.stringify(this.lastResponse.body)).toBe(status);
 });
 
 Then('the response body matches:', function (docString) {
-    expect(this.response.body).toMatchObject(JSON.parse(docString));
+    expect(this.lastResponse.body).toMatchObject(JSON.parse(docString));
 });
 
 Then('the created item can be fetched by its id', async function () {
     const api = await this.api();
-    const fetched = await api.get(`/api/items/${this.createdItem.id}`);
+    const fetched = await api.get(`/api/items/${this.lastItem.id}`);
     expect(fetched.status).toBe(200);
-    expect(fetched.body).toEqual(this.createdItem);
+    expect(fetched.body).toEqual(this.lastItem);
 });

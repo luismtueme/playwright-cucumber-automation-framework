@@ -9,7 +9,9 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+/** @type {readonly BrowserName[]} */
 const BROWSERS = ['chromium', 'firefox', 'webkit'];
+/** @type {readonly ArtifactMode[]} */
 const ARTIFACT_MODES = ['off', 'on', 'retain-on-failure'];
 
 // Demo app credentials are public on purpose: they only unlock the bundled demo app
@@ -21,6 +23,29 @@ function loadEnvFile(file = path.join(ROOT, '.env')) {
     }
 }
 
+/**
+ * @typedef {'chromium' | 'firefox' | 'webkit'} BrowserName
+ * @typedef {'off' | 'on' | 'retain-on-failure'} ArtifactMode
+ * @typedef {{ host: string, port: number, user?: string, password?: string, database?: string }} DbConfig
+ *
+ * @typedef {object} Defaults Shape of config/testConfig.json
+ * @property {string} baseUrl
+ * @property {string} environment
+ * @property {BrowserName} browser
+ * @property {boolean} headless
+ * @property {{ width: number, height: number }} viewport
+ * @property {{ action: number, navigation: number, expect: number, test: number }} timeouts
+ * @property {ArtifactMode} video
+ * @property {ArtifactMode} trace
+ *
+ * @typedef {Readonly<ReturnType<typeof buildConfig>>} Config
+ */
+
+/**
+ * @param {string} name
+ * @param {string | undefined} value
+ * @param {boolean} fallback
+ */
 function parseBoolean(name, value, fallback) {
     if (value === undefined || value === '') return fallback;
     if (/^(1|true|yes)$/i.test(value)) return true;
@@ -28,6 +53,11 @@ function parseBoolean(name, value, fallback) {
     throw new Error(`${name} must be true or false, got "${value}"`);
 }
 
+/**
+ * @param {string} name
+ * @param {string | undefined} value
+ * @param {number} fallback
+ */
 function parseInteger(name, value, fallback) {
     if (value === undefined || value === '') return fallback;
     const number = Number(value);
@@ -37,11 +67,18 @@ function parseInteger(name, value, fallback) {
     return number;
 }
 
+/**
+ * @template {string} T
+ * @param {string} name
+ * @param {string} value
+ * @param {readonly T[]} allowed
+ * @returns {T}
+ */
 function oneOf(name, value, allowed) {
-    if (!allowed.includes(value)) {
+    if (!allowed.includes(/** @type {T} */ (value))) {
         throw new Error(`${name} must be one of ${allowed.join(', ')}, got "${value}"`);
     }
-    return value;
+    return /** @type {T} */ (value);
 }
 
 /**
@@ -49,7 +86,7 @@ function oneOf(name, value, allowed) {
  * Exported separately from the cached config so it can be unit tested.
  *
  * @param {Record<string, string | undefined>} env
- * @param {object} defaults Contents of config/testConfig.json
+ * @param {Defaults} defaults Contents of config/testConfig.json
  */
 function buildConfig(env, defaults) {
     const isCI = parseBoolean('CI', env.CI, false);
@@ -96,6 +133,7 @@ function buildConfig(env, defaults) {
 
 /**
  * Returns credentials for the application under test, or throws with setup instructions.
+ * @param {{ credentials: { username?: string, password?: string } }} config
  */
 function requireCredentials(config) {
     const { username, password } = config.credentials;
@@ -106,6 +144,7 @@ function requireCredentials(config) {
 }
 
 loadEnvFile();
+/** @type {Defaults} */
 const defaults = JSON.parse(fs.readFileSync(path.join(__dirname, 'testConfig.json'), 'utf8'));
 const config = buildConfig(process.env, defaults);
 

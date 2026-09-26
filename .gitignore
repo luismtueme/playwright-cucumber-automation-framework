@@ -117,3 +117,6 @@ temp/
 
 # Lock files (optional - uncomment if you want to ignore package-lock.json)
 # package-lock.json
+
+# Saved login sessions (live cookies)
+.auth/
