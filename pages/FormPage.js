@@ -4,6 +4,7 @@ const { BasePage } = require('./BasePage');
 class FormPage extends BasePage {
     static path = '/';
 
+    /** @param {import('@playwright/test').Page} page */
     constructor(page) {
         super(page);
         this.heading = page.getByRole('heading', { level: 1 });
@@ -18,6 +19,7 @@ class FormPage extends BasePage {
         await this.exampleButton.click();
     }
 
+    /** @param {string} value */
     async submit(value) {
         await this.input.fill(value);
         await this.submitButton.click();

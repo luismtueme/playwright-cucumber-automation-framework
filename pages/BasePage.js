@@ -15,7 +15,7 @@ class BasePage {
     }
 
     async open() {
-        await this.page.goto(this.constructor.path);
+        await this.page.goto(/** @type {typeof BasePage} */ (this.constructor).path);
     }
 }
 

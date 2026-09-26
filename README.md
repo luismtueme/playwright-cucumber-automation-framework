@@ -14,10 +14,14 @@ Write tests as Gherkin scenarios (Cucumber), as Playwright specs, or both. The t
 | API tests | `ApiClient` on Playwright's request API. In Cucumber, every request/response is attached to the report with passwords and tokens masked |
 | Database checks | `DbClient` (MySQL, pooled, parameterized queries). `@db` scenarios verify what the API wrote. CI runs them against a real MySQL |
 | Configuration | One config for both runners (`config/index.js`). Secrets come from environment variables or `.env`, never from committed files |
+| Saved login | Log in once, reuse the session: Playwright's `setup` project, and the `@authenticated` tag in Cucumber |
+| Test data | Factories and cleanup (`createItem`, `trackItem`, `this.addCleanup()`). Every test deletes what it creates, and CI fails if any rows are left behind |
 | Parallel runs | Both runners run in parallel. Each Cucumber worker gets its own browser and demo app |
 | Failure evidence | Screenshot, Playwright trace and video for every failed test. Videos of passing tests are deleted |
 | Reporting | Allure with steps, attachments, trend history and failure categories (Application Bug, Flaky Test, Test Defect, Infrastructure) |
-| Quality gates | ESLint (including Playwright rules), Prettier, framework unit tests, step validation, `npm audit`, all required to merge |
+| Type checking | Strict TypeScript checking of the JavaScript via JSDoc. Typos in page objects, fixtures and step definitions fail before any test runs |
+| Quality gates | ESLint (including Playwright rules), Prettier, type check, framework unit tests, step validation, `npm audit`, all required to merge |
+| Cross-browser | Every PR runs on Chromium. A nightly job runs everything on Chromium, Firefox and WebKit |
 | Demo app | `demo-app/`: a small web app and JSON API the examples run against, so everything passes out of the box |
 
 ## Quick start
@@ -76,12 +80,14 @@ Invalid values fail at startup with the variable name, for example `TEST_BROWSER
 | `npm test` | Clean results, Playwright specs, then Cucumber scenarios |
 | `npm run test:playwright` | Playwright specs in `tests/` |
 | `npm run test:cucumber` | Cucumber scenarios in `features/` |
-| `npx cucumber-js --tags "@Smoke"` | Scenarios by tag. Tags in use: `@Smoke`, `@Regression`, `@ui`, `@api`, `@db` |
+| `npx cucumber-js --tags "@Smoke"` | Scenarios by tag. Tags in use: `@Smoke`, `@Regression`, `@ui`, `@api`, `@db`, `@authenticated` |
 | `npx playwright test --grep @smoke` | Playwright specs by tag in the title |
 | `npx cucumber-js features/ui/login.feature` | One feature file |
 | `npm run test:unit` | Unit tests for the framework code (`unit/`) |
 | `npm run check` | Validates every Cucumber step is defined exactly once and every spec loads. No browser |
 | `npm run lint` / `npm run format` | ESLint and Prettier check / auto-fix |
+| `npm run typecheck` | Strict type check of all code (no build step) |
+| `TEST_BROWSER=webkit npm test` | Everything in another browser |
 | `npm run demo` | Starts the demo app on http://127.0.0.1:4173 |
 | `npm run report` | Builds and opens the Allure report |
 
@@ -103,13 +109,19 @@ DB_HOST=127.0.0.1 DB_USER=tester DB_PASSWORD=tester DB_NAME=testdb npm run test:
 ├── features/                 # Gherkin: ui/, api/, db/
 ├── step_definitions/         # Cucumber steps, one file per area
 ├── hooks/hooks.js            # Cucumber lifecycle: browser, demo app, DB, failure evidence
-├── pages/                    # Page objects (BasePage, FormPage, LoginPage)
-├── tests/                    # Playwright specs (ui/, api/) and fixtures.js
+├── pages/                    # Page objects (BasePage, FormPage, LoginPage, ItemsPage)
+├── tests/
+│   ├── fixtures.js           # Custom fixtures: page objects, API clients, test data factories
+│   ├── auth.setup.js         # Logs in once and saves the session for browser tests
+│   └── ui/, api/             # Playwright specs
 ├── unit/                     # Unit tests for the framework itself (node:test)
 ├── utils/
 │   ├── apiClient.js          # HTTP client (Playwright request API)
 │   ├── dbClient.js           # MySQL client
 │   ├── world.js              # Cucumber World: this.page, this.formPage, this.api(), this.db
+│   ├── steps.js              # Typed Given/When/Then (this = World)
+│   ├── authState.js          # Saved login session for both runners
+│   ├── checkLeftoverData.js  # Fails CI if tests left rows in the database
 │   ├── logger.js             # Leveled logger (LOG_LEVEL)
 │   ├── allureMetadata.js     # Report environment, executor and categories
 │   ├── allureCategories.js   # Failure categories
@@ -134,9 +146,11 @@ Feature: Login
     Then I am welcomed as the configured user
 ```
 
-Steps use page objects from the World, and assertions stay in the steps:
+Steps use page objects from the World, and assertions stay in the steps. Import `Given`/`When`/`Then` from `utils/steps.js` so `this` is typed as the World (autocomplete, and typos fail `npm run typecheck`):
 
 ```javascript
+const { When, Then } = require('../utils/steps');
+
 When('I log in with the configured credentials', async function () {
     const { username, password } = requireCredentials(this.config);
     await this.loginPage.login(username, password);
@@ -148,26 +162,43 @@ Then('I am welcomed as the configured user', async function () {
 });
 ```
 
-Scenarios tagged `@api` don't open a browser. Use `await this.api()` for requests and `this.db` for queries. See `features/api/` and `features/db/`.
+- `@api` scenarios don't open a browser. Use `await this.api()` (or `await this.authedApi()`) for requests and `this.db` for queries.
+- `@authenticated` scenarios start logged in with a session saved once per worker, so they skip the login page.
+- Anything a scenario creates must be cleaned up: call `this.cleanUpItem(item)` or `this.addCleanup(async () => ...)`. Cleanups run after the scenario, pass or fail.
 
 ### A Playwright spec
 
-Import `test` from `tests/fixtures.js` to get page objects and API clients injected:
+Import `test` from `tests/fixtures.js` to get page objects, API clients and test data injected. Browser tests start logged in (session saved once by `tests/auth.setup.js`):
 
 ```javascript
-const { test, expect } = require('../fixtures');
+const { test, expect, LOGGED_OUT } = require('../fixtures');
 
-test('logs in with the configured credentials', async ({ loginPage, credentials }) => {
-    await loginPage.open();
-    await loginPage.login(credentials.username, credentials.password);
-    await expect(loginPage.welcome).toHaveText(`Welcome, ${credentials.username}`);
+test('lists items created through the API', async ({ itemsPage, createItem }) => {
+    const item = await createItem(); // deleted automatically after the test
+    await itemsPage.open(); // already logged in
+    await expect(itemsPage.item(item.name)).toBeVisible();
 });
 
-test('creates an item', async ({ authedApi }) => {
-    const response = await authedApi.post('/api/items', { name: 'Manhole 42 inspection' });
-    expect(response.status).toBe(201);
+test.describe('as a visitor', () => {
+    test.use({ storageState: LOGGED_OUT }); // opt out of the saved session
+
+    test('logs in', async ({ loginPage, credentials }) => {
+        await loginPage.open();
+        await loginPage.login(credentials.username, credentials.password);
+        await expect(loginPage.welcome).toHaveText(`Welcome, ${credentials.username}`);
+    });
 });
 ```
+
+| Fixture | Gives you |
+|---|---|
+| `formPage`, `loginPage`, `itemsPage` | Page objects on the test's page |
+| `api` / `authedApi` | `ApiClient` without / with a login token (never carries the browser session) |
+| `createItem(overrides?)` | Creates an item via the API and deletes it after the test |
+| `trackItem(item)` | Deletes an item you created another way (e.g. through the UI) after the test |
+| `credentials` | `{ username, password }` from the environment |
+
+When testing your own app, update `tests/auth.setup.js` and `utils/authState.js` with your login endpoint, and write factories like `createItem` for your own data.
 
 ### A page object
 
@@ -211,9 +242,10 @@ In CI, the report for every push to `main` is published to GitHub Pages with tre
 
 | Job | Runs |
 |---|---|
-| Checks | Lint and format, `npm audit` (high and critical), unit tests, step and spec validation |
-| Tests | Both suites against the demo app, backed by a MySQL service container |
+| Checks | Lint and format, type check, `npm audit` (high and critical), unit tests, step and spec validation |
+| Tests | Both suites against the demo app, backed by a MySQL service container, then a check that no test data was left behind |
 | Publish Allure Report | On `main` only: builds the report and deploys it to GitHub Pages |
+| Nightly Cross-Browser | Daily at 06:00 UTC (and on demand): everything on Chromium, Firefox and WebKit. Not required to merge |
 
 `main` is protected: changes need a PR with Checks and Tests passing. Dependabot opens weekly update PRs. See [.github/GITHUB_ACTIONS_GUIDE.md](.github/GITHUB_ACTIONS_GUIDE.md) for setup in your own repository.
 

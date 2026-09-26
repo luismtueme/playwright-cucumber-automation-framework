@@ -1,6 +1,9 @@
-const { test, expect } = require('../fixtures');
+const { test, expect, LOGGED_OUT } = require('../fixtures');
 
 test.describe('Login', () => {
+    // The login page needs a visitor without the saved session
+    test.use({ storageState: LOGGED_OUT });
+
     test.beforeEach(async ({ loginPage }) => {
         await loginPage.open();
     });

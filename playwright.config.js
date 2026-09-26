@@ -6,6 +6,7 @@
  */
 const { defineConfig, devices } = require('@playwright/test');
 const { config } = require('./config');
+const { AUTH_FILE } = require('./utils/authState');
 
 const DEVICES = { chromium: 'Desktop Chrome', firefox: 'Desktop Firefox', webkit: 'Desktop Safari' };
 const baseURL = config.baseUrl || `http://127.0.0.1:${config.demoAppPort}`;
@@ -31,7 +32,15 @@ module.exports = defineConfig({
         screenshot: 'only-on-failure',
     },
     globalSetup: require.resolve('./utils/global-setup'),
-    projects: [{ name: config.browser }],
+    projects: [
+        // Logs in once and saves the session; browser tests reuse it
+        { name: 'setup', testMatch: /auth\.setup\.js$/ },
+        {
+            name: config.browser,
+            dependencies: ['setup'],
+            use: { storageState: AUTH_FILE },
+        },
+    ],
     // Starts the bundled demo app unless BASE_URL points at a real application
     webServer: config.useDemoApp
         ? {

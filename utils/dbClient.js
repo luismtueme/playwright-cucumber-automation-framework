@@ -15,7 +15,12 @@ const { createLogger } = require('./logger');
 
 const log = createLogger('db');
 
+/** @typedef {Record<string, any>} Row */
+/** @typedef {import('mysql2').ResultSetHeader} WriteResult insertId, affectedRows, ... */
+/** @typedef {string | number | boolean | Date | null} Param */
+
 class DbClient {
+    /** @param {import('../config').DbConfig | null | undefined} dbConfig */
     constructor(dbConfig) {
         if (!dbConfig) {
             throw new Error('Database is not configured. Set DB_HOST, DB_USER, DB_PASSWORD and DB_NAME.');
@@ -23,26 +28,53 @@ class DbClient {
         this.pool = mysql.createPool({ ...dbConfig, connectionLimit: 5, waitForConnections: true });
     }
 
-    /** Runs a query and returns all rows. */
+    /**
+     * Runs a SELECT and returns all rows.
+     * @param {string} sql
+     * @param {Param[]} [params]
+     * @returns {Promise<Row[]>}
+     */
     async query(sql, params = []) {
         log.debug(`${sql} ${JSON.stringify(params)}`);
         const [rows] = await this.pool.execute(sql, params);
-        return rows;
+        return /** @type {Row[]} */ (rows);
     }
 
-    /** Returns the first row, or null when there is none. */
+    /**
+     * Runs INSERT, UPDATE, DELETE or DDL and returns the result header.
+     * @param {string} sql
+     * @param {Param[]} [params]
+     * @returns {Promise<WriteResult>}
+     */
+    async execute(sql, params = []) {
+        log.debug(`${sql} ${JSON.stringify(params)}`);
+        const [result] = await this.pool.execute(sql, params);
+        return /** @type {WriteResult} */ (result);
+    }
+
+    /**
+     * Returns the first row, or null when there is none.
+     * @param {string} sql
+     * @param {Param[]} [params]
+     * @returns {Promise<Row | null>}
+     */
     async one(sql, params = []) {
         const rows = await this.query(sql, params);
         return rows[0] ?? null;
     }
 
-    /** Returns the number of rows in `table` matching an optional WHERE clause. */
+    /**
+     * Returns the number of rows in `table` matching an optional WHERE clause.
+     * @param {string} table
+     * @param {string} [where] SQL condition with ? placeholders
+     * @param {Param[]} [params]
+     */
     async count(table, where = '1 = 1', params = []) {
         if (!/^[A-Za-z0-9_]+$/.test(table)) {
             throw new Error(`Invalid table name: ${table}`);
         }
         const row = await this.one(`SELECT COUNT(*) AS total FROM \`${table}\` WHERE ${where}`, params);
-        return Number(row.total);
+        return Number(row?.total ?? 0);
     }
 
     async close() {

@@ -1,4 +1,4 @@
-const { Given, When, Then } = require('@cucumber/cucumber');
+const { Given, When, Then } = require('../utils/steps');
 const { expect } = require('@playwright/test');
 const { requireCredentials } = require('../config');
 

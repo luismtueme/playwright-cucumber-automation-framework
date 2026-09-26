@@ -1,4 +1,4 @@
-const { Given, When, Then } = require('@cucumber/cucumber');
+const { Given, When, Then } = require('../utils/steps');
 const { expect } = require('@playwright/test');
 
 Given('I am on the form page', async function () {

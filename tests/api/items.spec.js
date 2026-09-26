@@ -1,9 +1,10 @@
 const { test, expect } = require('../fixtures');
 
 test.describe('Items API', () => {
-    test('creates an item and fetches it by id @smoke', async ({ authedApi }) => {
+    test('creates an item and fetches it by id @smoke', async ({ authedApi, trackItem }) => {
         const created = await authedApi.post('/api/items', { name: 'Manhole 42 inspection' });
         expect(created.status).toBe(201);
+        trackItem(created.body);
         expect(created.body).toMatchObject({ id: expect.any(Number), name: 'Manhole 42 inspection' });
 
         const fetched = await authedApi.get(`/api/items/${created.body.id}`);
@@ -22,8 +23,8 @@ test.describe('Items API', () => {
         expect(response.status).toBe(401);
     });
 
-    test('deletes an item', async ({ authedApi }) => {
-        const { body: item } = await authedApi.post('/api/items', { name: 'Temporary item' });
+    test('deletes an item', async ({ authedApi, createItem }) => {
+        const item = await createItem();
         expect((await authedApi.delete(`/api/items/${item.id}`)).status).toBe(204);
         expect((await authedApi.get(`/api/items/${item.id}`)).status).toBe(404);
     });

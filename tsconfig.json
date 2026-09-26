@@ -1,0 +1,28 @@
+{
+  // Type-checks the JavaScript using JSDoc and library types. Nothing is compiled.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "target": "ES2023",
+    "module": "nodenext",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": [
+    "config",
+    "demo-app/server.js",
+    "hooks",
+    "pages",
+    "step_definitions",
+    "tests",
+    "unit",
+    "utils",
+    "cucumber.js",
+    "playwright.config.js"
+  ],
+  "exclude": ["node_modules"]
+}

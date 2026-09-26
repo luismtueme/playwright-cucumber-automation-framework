@@ -11,11 +11,14 @@ Automated testing workflow that runs on every pull request to `main`, every push
 
 | Job | Runs on | What it does |
 |-----|---------|--------------|
-| `Checks` | PRs and pushes | ESLint and Prettier, `npm audit --audit-level=high`, framework unit tests, step validation (fails on undefined or ambiguous steps), Playwright spec discovery |
-| `Tests` | PRs and pushes | Playwright specs, then Cucumber scenarios, headless, with a MySQL service container for `@db` scenarios. Fails if any test fails |
+| `Checks` | PRs and pushes | ESLint and Prettier, strict type check, `npm audit --audit-level=high`, framework unit tests, step validation (fails on undefined or ambiguous steps), Playwright spec discovery |
+| `Tests` | PRs and pushes | Playwright specs, then Cucumber scenarios, headless, with a MySQL service container for `@db` scenarios. Then fails if any test left rows in the database. Fails if any test fails |
 | `Publish Allure Report` | Pushes to `main` only | Builds the Allure report (with trend history) and deploys it to GitHub Pages |
 
 `Checks` and `Tests` are the required status checks for merging into `main`. PR runs never publish a report and need no secrets.
+
+### `nightly.yml`
+Runs both suites on Chromium, Firefox and WebKit every day at 06:00 UTC, and on demand from the Actions tab. Each browser is a separate job, and all three finish even if one fails. Allure results are uploaded per browser. It isn't a required check: PRs stay on Chromium for speed, and this catches browser-specific breakage within a day. To be notified, enable failed-workflow emails for scheduled runs in your GitHub notification settings.
 
 ### `dependabot.yml`
 Opens weekly PRs for npm and GitHub Actions updates. Minor and patch npm updates are grouped into one PR.

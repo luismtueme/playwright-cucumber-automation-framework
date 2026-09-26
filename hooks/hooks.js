@@ -22,12 +22,14 @@ const runtime = require('../utils/cucumberRuntime');
 const { DbClient } = require('../utils/dbClient');
 const { writeAllureMetadata } = require('../utils/allureMetadata');
 const { startDemoApp } = require('../demo-app/server');
+const { getAuthState } = require('../utils/authState');
 const { createLogger } = require('../utils/logger');
 require('../utils/world');
 const { wrapStepFunction } = require('../utils/stepErrorStatus');
 
 const log = createLogger('hooks');
 const BROWSER_TYPES = { chromium, firefox, webkit };
+/** @type {Awaited<ReturnType<typeof startDemoApp>> | null} */
 let demoApp = null;
 
 setDefaultTimeout(config.timeouts.test);
@@ -51,13 +53,23 @@ BeforeAll(async function () {
     }
 });
 
-Before({ tags: 'not @api' }, async function () {
-    await this.openPage();
+Before({ tags: 'not @api' }, async function ({ pickle }) {
+    // @authenticated scenarios start logged in (session saved once per worker)
+    const authenticated = pickle.tags.some((tag) => tag.name === '@authenticated');
+    await this.openPage({ storageState: authenticated ? await getAuthState(runtime.baseUrl) : undefined });
 });
 
 After(async function ({ pickle, result }) {
-    const failed = result.status === Status.FAILED;
+    const failed = result?.status === Status.FAILED;
     const slug = `${pickle.name.replace(/[^a-z0-9]+/gi, '_')}_${Date.now()}`;
+
+    // Test data first, while the API client is still open. A failed cleanup is
+    // reported but doesn't change the scenario's result; CI's leftover-data check catches leaks.
+    const cleanupErrors = await this.runCleanups();
+    for (const error of cleanupErrors) {
+        log.warn(`Cleanup failed in "${pickle.name}": ${error.message}`);
+        await this.attach(error.stack, { mediaType: 'text/plain', fileName: 'cleanup-error.txt' });
+    }
 
     if (this.page && failed) {
         await this.attach(await this.page.screenshot({ fullPage: true }), {

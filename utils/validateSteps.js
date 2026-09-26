@@ -16,27 +16,34 @@ async function main() {
         provided: { dryRun: true, format: [], tags: '', parallel: 0, retry: 0 },
     });
 
+    /** @type {string[]} */
     const problems = [];
+    /** @type {Map<string, import('@cucumber/messages').Pickle>} */
     const pickles = new Map();
+    /** @type {Map<string, import('@cucumber/messages').TestCase>} */
     const testCases = new Map();
+    /** @type {Map<string, string>} */
     const testCaseStarts = new Map();
 
     await runCucumber(runConfiguration, undefined, (message) => {
+        const finished = message.testStepFinished;
         if (message.pickle) {
             pickles.set(message.pickle.id, message.pickle);
         } else if (message.testCase) {
             testCases.set(message.testCase.id, message.testCase);
         } else if (message.testCaseStarted) {
             testCaseStarts.set(message.testCaseStarted.id, message.testCaseStarted.testCaseId);
-        } else if (message.testStepFinished) {
-            const { status } = message.testStepFinished.testStepResult;
+        } else if (finished) {
+            const { status } = finished.testStepResult;
             if (status !== 'UNDEFINED' && status !== 'AMBIGUOUS') return;
 
-            const testCase = testCases.get(testCaseStarts.get(message.testStepFinished.testCaseStartedId));
-            const pickle = pickles.get(testCase.pickleId);
-            const testStep = testCase.testSteps.find((step) => step.id === message.testStepFinished.testStepId);
-            const pickleStep = pickle.steps.find((step) => step.id === testStep.pickleStepId);
-            problems.push(`${status.toLowerCase()}: "${pickleStep.text}" (${pickle.uri}, scenario "${pickle.name}")`);
+            const testCase = testCases.get(testCaseStarts.get(finished.testCaseStartedId) ?? '');
+            const pickle = testCase && pickles.get(testCase.pickleId);
+            const testStep = testCase?.testSteps.find((step) => step.id === finished.testStepId);
+            const pickleStep = pickle?.steps.find((step) => step.id === testStep?.pickleStepId);
+            problems.push(
+                `${status.toLowerCase()}: "${pickleStep?.text}" (${pickle?.uri}, scenario "${pickle?.name}")`,
+            );
         }
     });
 
