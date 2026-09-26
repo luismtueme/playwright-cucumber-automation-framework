@@ -23,7 +23,7 @@ env:
   NODE_VERSION: 22
 
 jobs:
-  # Fast gate: dependency audit, undefined/ambiguous Cucumber steps, Playwright spec discovery
+  # Fast gate: lint, dependency audit, framework unit tests, step and spec validation (no browser)
   check:
     name: Checks
     runs-on: ubuntu-latest
@@ -41,8 +41,14 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Lint and Format Check
+        run: npm run lint
+
       - name: Audit Dependencies (high and critical)
         run: npm audit --audit-level=high
+
+      - name: Unit Tests (framework code)
+        run: npm run test:unit
 
       - name: Validate Test Definitions
         run: npm run check
@@ -52,8 +58,31 @@ jobs:
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # A real MySQL so the @db scenarios run; the demo app stores items in it
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root
+          MYSQL_DATABASE: testdb
+          MYSQL_USER: tester
+          MYSQL_PASSWORD: ci-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root"
+          --health-interval=5s --health-timeout=5s --health-retries=20
     env:
       CI: true
+      TEST_ENV: ci
+      TEST_BROWSER: chromium
+      # Throwaway CI database. For a real app, read credentials from secrets:
+      #   APP_USERNAME: ${{ secrets.APP_USERNAME }}
+      #   APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: tester
+      DB_PASSWORD: ci-password
+      DB_NAME: testdb
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -67,11 +96,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Only the browsers the suites use (chromium for Cucumber, firefox for Playwright)
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps chromium firefox
+      - name: Install Playwright Browser
+        run: npx playwright install --with-deps ${{ env.TEST_BROWSER }}
 
-      # Playwright runs first: its global setup clears allure-results
       - name: Run Playwright Tests
         run: npm run test:playwright
 
@@ -88,9 +115,8 @@ jobs:
         with:
           name: test-artifacts
           path: |
-            videos/
             traces/
-            screenshots/
+            videos/
             test-results/
             html-report/
           if-no-files-found: ignore

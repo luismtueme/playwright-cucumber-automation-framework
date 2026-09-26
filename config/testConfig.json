@@ -1,33 +1,15 @@
 {
-  "browserType": "chromium",
+  "baseUrl": "",
+  "environment": "local",
+  "browser": "chromium",
   "headless": false,
-  "url": "test-fixtures/example-app.html",
-  "username": "your-username",
-  "password": "your-password",
-  "invalidUsername": "invalid-user",
-  "invalidPassword": "invalid-password",
-  "enableTestRail": false,
-  "dbConfig": {
-    "host": "your-db-host",
-    "user": "your-db-username",
-    "password": "your-db-password",
-    "database": "your-database-name",
-    "port": 3306
+  "viewport": { "width": 1280, "height": 720 },
+  "timeouts": {
+    "action": 10000,
+    "navigation": 30000,
+    "expect": 5000,
+    "test": 60000
   },
-  "apiConfig": {
-    "baseUrl": "https://api.example.com",
-    "timeout": 5000,
-    "headers": {
-      "Content-Type": "application/json",
-      "Accept": "application/json"
-    },
-    "username": "your-api-username",
-    "password": "your-api-password"
-  },
-  "api": {
-    "baseURL": "https://api.example.com",
-    "authEndpoint": "/api/auth",
-    "apiKey": "your-api-key-here",
-    "projectsEndpoint": "/api/projects"
-  }
+  "video": "retain-on-failure",
+  "trace": "retain-on-failure"
 }

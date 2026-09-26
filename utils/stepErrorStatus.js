@@ -1,5 +1,3 @@
-const { setDefinitionFunctionWrapper } = require('@cucumber/cucumber');
-
 /**
  * Makes Playwright assertion failures show as "failed" (not "broken") in Allure.
  *
@@ -18,7 +16,7 @@ class AssertionError extends Error {
     }
 }
 
-setDefinitionFunctionWrapper((fn) => {
+function wrapStepFunction(fn) {
     const wrapped = async function (...args) {
         try {
             return await fn.apply(this, args);
@@ -32,6 +30,6 @@ setDefinitionFunctionWrapper((fn) => {
     // Cucumber uses the function's arity to validate step parameters
     Object.defineProperty(wrapped, 'length', { value: fn.length });
     return wrapped;
-});
+}
 
-module.exports = { AssertionError };
+module.exports = { AssertionError, wrapStepFunction };

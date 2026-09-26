@@ -11,8 +11,8 @@ Automated testing workflow that runs on every pull request to `main`, every push
 
 | Job | Runs on | What it does |
 |-----|---------|--------------|
-| `Checks` | PRs and pushes | `npm audit --audit-level=high`, Cucumber dry run (fails on undefined or ambiguous steps), Playwright spec discovery |
-| `Tests` | PRs and pushes | Playwright specs, then Cucumber scenarios, headless. Fails if any test fails |
+| `Checks` | PRs and pushes | ESLint and Prettier, `npm audit --audit-level=high`, framework unit tests, step validation (fails on undefined or ambiguous steps), Playwright spec discovery |
+| `Tests` | PRs and pushes | Playwright specs, then Cucumber scenarios, headless, with a MySQL service container for `@db` scenarios. Fails if any test fails |
 | `Publish Allure Report` | Pushes to `main` only | Builds the Allure report (with trend history) and deploys it to GitHub Pages |
 
 `Checks` and `Tests` are the required status checks for merging into `main`. PR runs never publish a report and need no secrets.
@@ -30,7 +30,16 @@ Opens weekly PRs for npm and GitHub Actions updates. Minor and patch npm updates
 No personal access token is needed. The workflow deploys with the built-in `GITHUB_TOKEN`.
 
 ### 2. **Point the Tests at Your Application**
-The examples run against a bundled fixture page (`test-fixtures/example-app.html`) so the pipeline is green out of the box. To test your real app, set `url` in `config/testConfig.json`, or set the `BASE_URL` environment variable in the workflow.
+The examples run against the bundled demo app (`demo-app/`), which the tests start automatically, so the pipeline is green out of the box. To test your real app, set these in the `Tests` job's `env`, with credentials stored as repository secrets (Settings → Secrets and variables → Actions):
+
+```yaml
+env:
+  BASE_URL: https://qa.your-app.example.com
+  APP_USERNAME: ${{ secrets.APP_USERNAME }}
+  APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+```
+
+Remove the `services.mysql` block and the `DB_*` variables if you don't test a database, or point `DB_*` at your test database (password from a secret).
 
 ### 3. **Customize the Workflow** (Optional)
 
