@@ -1,6 +1,6 @@
 {
   "name": "playwright-cucumber-framework",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Playwright + Cucumber test automation framework: UI, API and database testing with Allure reporting",
   "license": "MIT",
@@ -12,23 +12,28 @@
     "testing"
   ],
   "engines": {
-    "node": ">=20.12"
+    "node": ">=22.8"
   },
   "scripts": {
     "test": "npm run clean && npm run test:playwright && npm run test:cucumber",
     "test:playwright": "playwright test",
     "test:cucumber": "cucumber-js",
-    "test:unit": "node --test \"unit/*.test.js\"",
+    "test:unit": "node --test --experimental-test-coverage --test-coverage-lines=90 --test-coverage-branches=80 --test-coverage-functions=85 --test-coverage-include=\"config/**\" --test-coverage-include=\"utils/apiClient.js\" --test-coverage-include=\"utils/logger.js\" --test-coverage-include=\"utils/stepErrorStatus.js\" --test-coverage-include=\"utils/allureCategories.js\" --test-coverage-include=\"utils/lintGherkin.js\" --test-coverage-include=\"demo-app/server.js\" \"unit/*.test.js\"",
     "check": "node utils/validateSteps.js && playwright test --list",
-    "lint": "eslint . && prettier --check .",
+    "lint": "eslint . && prettier --check . && node utils/lintGherkin.js",
     "typecheck": "tsc -p .",
     "format": "prettier --write . && eslint --fix .",
     "clean": "node utils/allureMetadata.js clean",
     "demo": "node demo-app/server.js",
-    "report": "allure generate allure-results --clean -o allure-report && allure open allure-report"
+    "report": "allure generate allure-results --clean -o allure-report && allure open allure-report",
+    "test:visual": "node utils/visual.js",
+    "test:quarantine": "node utils/runQuarantine.js"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@cucumber/cucumber": "^13.2.1",
+    "@cucumber/gherkin": "^42.0.1",
+    "@cucumber/messages": "^33.0.4",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.48.1",
     "@types/node": "^22.7.6",

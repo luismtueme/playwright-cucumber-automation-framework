@@ -9,17 +9,19 @@
         <title>Items | Example Application</title>
     </head>
     <body>
-        <h1>Items</h1>
+        <main>
+            <h1>Items</h1>
 
-        <form id="new-item-form" novalidate>
-            <label for="item-name">New item name</label>
-            <input id="item-name" name="name" type="text" />
-            <button type="submit">Add item</button>
-        </form>
-        <p id="item-error" role="alert"></p>
+            <form id="new-item-form" novalidate>
+                <label for="item-name">New item name</label>
+                <input id="item-name" name="name" type="text" />
+                <button type="submit">Add item</button>
+            </form>
+            <p id="item-error" role="alert"></p>
 
-        <ul id="items" aria-label="Items"></ul>
-        <p id="empty" hidden>No items yet</p>
+            <ul id="items" aria-label="Items"></ul>
+            <p id="empty" hidden>No items yet</p>
+        </main>
 
         <script>
             const list = document.getElementById('items');

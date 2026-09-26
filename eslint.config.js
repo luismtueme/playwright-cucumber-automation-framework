@@ -34,6 +34,8 @@ module.exports = [
         rules: {
             ...playwright.configs['flat/recommended'].rules,
             'playwright/no-wait-for-timeout': 'error',
+            // Fixtures that assert internally count as assertions
+            'playwright/expect-expect': ['error', { assertFunctionNames: ['checkAccessibility', 'expectScreenshot'] }],
         },
     },
     {

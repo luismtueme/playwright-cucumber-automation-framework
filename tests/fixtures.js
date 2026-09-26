@@ -13,6 +13,9 @@ const { ApiClient } = require('../utils/apiClient');
 const { FormPage } = require('../pages/FormPage');
 const { LoginPage } = require('../pages/LoginPage');
 const { ItemsPage } = require('../pages/ItemsPage');
+const { findAccessibilityViolations, formatViolations } = require('../utils/accessibility');
+
+const { expect } = base;
 
 /** storageState for a visitor with no session */
 const LOGGED_OUT = { cookies: [], origins: [] };
@@ -29,6 +32,8 @@ const LOGGED_OUT = { cookies: [], origins: [] };
  * @property {InstanceType<typeof ApiClient>} authedApi
  * @property {(item: { id: number }) => void} trackItem
  * @property {(overrides?: { name?: string }) => Promise<Item>} createItem
+ * @property {(options?: { exclude?: string[], disableRules?: string[] }) => Promise<void>} checkAccessibility
+ *   Runs axe on the current page, attaches the results, and fails on any violation
  */
 
 /**
@@ -50,6 +55,17 @@ const test = base.test.extend(
         },
         itemsPage: async ({ page }, use) => {
             await use(new ItemsPage(page));
+        },
+
+        checkAccessibility: async ({ page }, use, testInfo) => {
+            await use(async (options) => {
+                const violations = await findAccessibilityViolations(page, options);
+                await testInfo.attach('accessibility-violations.json', {
+                    body: JSON.stringify(violations, null, 2),
+                    contentType: 'application/json',
+                });
+                expect(violations, formatViolations(violations)).toEqual([]);
+            });
         },
 
         /**
@@ -120,4 +136,4 @@ function defined(value, message) {
     return value;
 }
 
-module.exports = { test, expect: base.expect, LOGGED_OUT, defined };
+module.exports = { test, expect, LOGGED_OUT, defined };

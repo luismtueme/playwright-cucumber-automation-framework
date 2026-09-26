@@ -120,3 +120,6 @@ temp/
 
 # Saved login sessions (live cookies)
 .auth/
+
+# Visual test baselines are committed
+!tests/visual/__screenshots__/**/*.png

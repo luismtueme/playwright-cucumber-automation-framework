@@ -10,19 +10,21 @@
     </head>
     <body>
         <nav><a href="/login">Log in</a></nav>
-        <h1>Example Application</h1>
+        <main>
+            <h1>Example Application</h1>
 
-        <section aria-label="Example action">
-            <button type="button" id="example-button">Run example action</button>
-            <p id="result" hidden>Example action completed</p>
-        </section>
+            <section aria-label="Example action">
+                <button type="button" id="example-button">Run example action</button>
+                <p id="result" hidden>Example action completed</p>
+            </section>
 
-        <form id="example-form" novalidate>
-            <label for="example-input">Example input</label>
-            <input id="example-input" name="example" type="text" />
-            <button type="submit">Submit</button>
-        </form>
-        <p id="message" role="status"></p>
+            <form id="example-form" novalidate>
+                <label for="example-input">Example input</label>
+                <input id="example-input" name="example" type="text" />
+                <button type="submit">Submit</button>
+            </form>
+            <p id="message" role="status"></p>
+        </main>
 
         <script>
             const MAX_LENGTH = 50;
