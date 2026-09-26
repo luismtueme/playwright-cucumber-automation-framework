@@ -27,7 +27,7 @@
     "allure-commandline": "^2.30.0",
     "allure-cucumberjs": "^3.0.5",
     "allure-playwright": "^3.0.5",
-    "cucumber-html-reporter": "^6.0.0",
+    "cucumber-html-reporter": "^7.2.0",
     "fs-extra": "^11.2.0"
   },
   "dependencies": {
