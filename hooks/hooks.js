@@ -1,220 +1,98 @@
-const { Before, After,AfterAll,BeforeAll, setDefaultTimeout } = require('@cucumber/cucumber');
+/**
+ * Cucumber lifecycle hooks.
+ *
+ * Per worker: start the demo app (unless BASE_URL is set), launch one browser,
+ * open the DB pool. Per scenario: a fresh browser context (skipped for @api).
+ * On failure: screenshot, Playwright trace and video are attached to Allure.
+ */
+const {
+    Before,
+    After,
+    BeforeAll,
+    AfterAll,
+    Status,
+    setDefaultTimeout,
+    setDefinitionFunctionWrapper,
+} = require('@cucumber/cucumber');
+const { chromium, firefox, webkit } = require('@playwright/test');
 const fs = require('fs');
 const path = require('path');
-const config = require('../config/testConfig.json')
-const allureCategories = require('../utils/allureCategories');
+const { config } = require('../config');
+const runtime = require('../utils/cucumberRuntime');
+const { DbClient } = require('../utils/dbClient');
+const { writeAllureMetadata } = require('../utils/allureMetadata');
+const { startDemoApp } = require('../demo-app/server');
+const { createLogger } = require('../utils/logger');
 require('../utils/world');
-require('../utils/stepErrorStatus');
+const { wrapStepFunction } = require('../utils/stepErrorStatus');
 
-setDefaultTimeout(60000); // Set default timeout to 60 seconds
+const log = createLogger('hooks');
+const BROWSER_TYPES = { chromium, firefox, webkit };
+let demoApp = null;
 
-BeforeAll(() => {
-    const allureResultsPath = path.resolve(process.cwd(), "allure-results");
+setDefaultTimeout(config.timeouts.test);
+// Report Playwright assertion failures as "failed" (not "broken") in Allure
+setDefinitionFunctionWrapper(wrapStepFunction);
 
-    // Ensure allure-results directory exists
-    try {
-        fs.mkdirSync(allureResultsPath, { recursive: true });
-        console.log("Ensured allure-results directory exists.");
-    } catch (error) {
-        console.error("Error ensuring allure-results directory:", error.message);
-        throw error;
+BeforeAll(async function () {
+    if (config.useDemoApp) {
+        // Port 0: every parallel worker gets its own demo app on a free port
+        demoApp = await startDemoApp({ port: 0 });
+        log.debug(`Demo app started at ${demoApp.url}`);
     }
+    runtime.baseUrl = demoApp ? demoApp.url : config.baseUrl;
+    runtime.apiBaseUrl = config.apiBaseUrl || runtime.baseUrl;
+    runtime.browser = await BROWSER_TYPES[config.browser].launch({ headless: config.headless });
+    if (config.db) runtime.db = new DbClient(config.db);
 
-    // Create Environment Data in the report
-    try {
-        const environmentData = `
-        OS=${process.platform}
-        Browser=${config.browserType}
-        NodeVersion=${process.version}
-        URL=${config.url}
-        `;
-        fs.writeFileSync(
-            path.join(allureResultsPath, "environment.properties"),
-            environmentData
-        );
-        console.log("Environment properties file written.");
-    } catch (error) {
-        console.error("Error writing environment.properties file:", error.message);
-        throw error;
-    }
-
-    // Add Categories in the report
-    try {
-        const destinationPath = path.join(allureResultsPath, "categories.json");
-        fs.writeFileSync(destinationPath, JSON.stringify(allureCategories, null, 2));
-        console.log("Categories file written to allure-results.");
-    } catch (error) {
-        console.error("Error loading categories:", error.message);
-        throw error;
-    }
-
-    // Add Executor Information
-    try {
-        const executorPath = path.join(allureResultsPath, "executor.json");
-        const isGithubActions = process.env.GITHUB_ACTIONS === "true";
-
-        const executorData = isGithubActions
-            ? {
-                name: "GitHub Actions",
-                type: "CI/CD",
-                url: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions`,
-                buildName: `GitHub Actions Build #${process.env.GITHUB_RUN_NUMBER}`,
-                buildUrl: `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-                reportUrl: `https://${process.env.GITHUB_REPOSITORY_OWNER}.github.io/${(process.env.GITHUB_REPOSITORY || '').split('/')[1]}/allure-report/`,
-                infrastructure: "GitHub Actions",
-                environment: process.env.TEST_ENV || "QA",
-            }
-            : {
-                name: "Local Execution",
-                type: "Local",
-                url: "http://localhost:3000",
-                buildName: "Local Execution",
-                buildUrl: "http://localhost:3000",
-                reportUrl: "http://localhost:3000/allure-report",
-                infrastructure: "Local Machine",
-                environment: process.env.TEST_ENV || "Local",
-            };
-
-        fs.writeFileSync(executorPath, JSON.stringify(executorData, null, 2));
-        console.log(
-            `Executor information written to allure-results: ${
-                isGithubActions ? "GitHub Actions" : "Local Execution"
-            }`
-        );
-    } catch (error) {
-        console.error("Error writing executor information:", error.message);
-        throw error;
+    // One worker writes report metadata (CUCUMBER_WORKER_ID is unset when not parallel)
+    if (!process.env.CUCUMBER_WORKER_ID || process.env.CUCUMBER_WORKER_ID === '0') {
+        writeAllureMetadata({ baseUrl: config.useDemoApp ? '(demo app)' : runtime.baseUrl });
     }
 });
 
+Before({ tags: 'not @api' }, async function () {
+    await this.openPage();
+});
 
+After(async function ({ pickle, result }) {
+    const failed = result.status === Status.FAILED;
+    const slug = `${pickle.name.replace(/[^a-z0-9]+/gi, '_')}_${Date.now()}`;
 
-Before(async function (scenario) {
-    try {
+    if (this.page && failed) {
+        await this.attach(await this.page.screenshot({ fullPage: true }), {
+            mediaType: 'image/png',
+            fileName: 'screenshot.png',
+        });
+    }
 
-        const tags = scenario.pickle.tags.map(tag => tag.name);
-        if (!tags.includes('@api')) {
-            console.log("Initializing browser...");
-            const browserType = config.browserType;
-            
-            // Force headless mode in CI environments
-            const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
-            const headlessMode = isCI ? true : config.headless;
-            
-            // Ensure videos directory exists for video recording
-            const videosDir = './videos';
-            if (!fs.existsSync(videosDir)) {
-                fs.mkdirSync(videosDir, { recursive: true });
-                console.log('Created videos directory for recording');
-            }
-            
-            // Enable video recording in all environments with proper directory setup
-            const videoRecording = {
-                dir: path.resolve(process.cwd(), 'videos'),
-                size: { width: 1920, height: 1080 },
-            };
-            console.log(`Video recording configured with dir: ${videoRecording.dir}`);
-            
-            await this.init(browserType, {
-                headless: headlessMode,
-                args: ['--start-maximized'],
-                recordVideo: videoRecording,
-            });
-
-        await this.context.tracing.start({ screenshots: true, snapshots: true });
-        console.log("Browser and context initialized successfully.");
-        this.page.setDefaultTimeout(30000);
-
+    if (this.context && config.trace !== 'off') {
+        if (failed || config.trace === 'on') {
+            const tracePath = path.join('traces', `${slug}.zip`);
+            await this.context.tracing.stop({ path: tracePath });
+            await this.attach(fs.readFileSync(tracePath), { mediaType: 'application/zip', fileName: 'trace.zip' });
         } else {
-            console.log("Skipping browser initialization for non-web scenario.");
+            await this.context.tracing.stop();
         }
-    } catch (error) {
-        console.error("Error during browser initialization in Before hook:", error);
-        throw error;
     }
+
+    // The video file is complete only after its context closes
+    const video = this.page?.video();
+    await this.context?.close();
+    if (video) {
+        const videoPath = await video.path();
+        if (failed || config.video === 'on') {
+            await this.attach(fs.readFileSync(videoPath), { mediaType: 'video/webm', fileName: 'video.webm' });
+        } else {
+            fs.rmSync(videoPath, { force: true });
+        }
+    }
+
+    await this.apiClient?.dispose();
 });
 
-After(async function (scenario) {
-    console.log('After hook triggered for scenario:', scenario.pickle.name);
-
-    try {
-        // Capture screenshot if the scenario fails
-        if (scenario.result.status === 'FAILED' && this.page) {
-            const screenshot = await this.page.screenshot();
-            await this.attach(screenshot, 'image/png');
-        }
-
-        // Attach video if the scenario fails and video recording is enabled
-        if (scenario.result.status === 'FAILED' && this.page && this.page.video) {
-            console.log('Video recording found, attempting to attach...');
-            try {
-                const videoPath = await this.page.video().path();
-                console.log(`Video path: ${videoPath}`);
-                
-                // In CI environments, skip video saving to avoid hanging
-                const isCI = process.env.CI || process.env.GITHUB_ACTIONS;
-                if (isCI) {
-                    console.log('CI environment detected, skipping video save to avoid hanging...');
-                    console.log('Videos will be available as artifacts from the browser context');
-                } else {
-                    // Local environment - use normal saveAs
-                    await this.page.video().saveAs(videoPath);
-                    console.log(`Video saved to: ${videoPath}`);
-                    
-                    // Add a small delay to ensure file system sync
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    
-                    if (fs.existsSync(videoPath)) {
-                        const video = fs.readFileSync(videoPath);
-                        await this.attach(video, 'video/webm');
-                        console.log(`Video attached for failed scenario: ${videoPath}`);
-                    } else {
-                        console.log('Video file not found after saving, skipping video attachment');
-                    }
-                }
-            } catch (videoError) {
-                console.log('Error attaching video:', videoError.message);
-            }
-        }
-
-        // Save trace for failed scenarios
-        if (scenario.result.status === 'FAILED' && this.context) {
-            try {
-                // Ensure traces directory exists
-                const tracesDir = './traces';
-                if (!fs.existsSync(tracesDir)) {
-                    fs.mkdirSync(tracesDir, { recursive: true });
-                }
-                
-                const tracePath = `./traces/${scenario.pickle.name.replace(/\s+/g, '_')}.zip`;
-                await this.context.tracing.stop({ path: tracePath });
-                console.log(`Trace saved for failed scenario: ${tracePath}`);
-
-                // Attach the trace to Allure
-                if (fs.existsSync(tracePath)) {
-                    const traceFile = fs.readFileSync(tracePath);
-                    await this.attach(traceFile, 'application/zip', `${scenario.pickle.name.replace(/\s+/g, '_')}.zip`);
-                } else {
-                    console.log('Trace file not found, skipping trace attachment');
-                }
-            } catch (traceError) {
-                console.log('Error saving trace:', traceError.message);
-            }
-        } else if (this.context) {
-            await this.context.tracing.stop(); // Stop tracing without saving for passed tests
-        }
-    } catch (error) {
-        console.error('Error capturing attachments:', error);
-    }
-
-    if (this.browser) {
-        console.log('Closing browser...');
-        await this.close();
-        console.log('Browser closed successfully.');
-    }
-
+AfterAll(async function () {
+    await runtime.browser?.close();
+    await runtime.db?.close();
+    await demoApp?.close();
 });
-
-AfterAll(() => {
-    console.log('All test completed');
-})

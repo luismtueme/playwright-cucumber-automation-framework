@@ -12,7 +12,8 @@ const { loadConfiguration, runCucumber } = require('@cucumber/cucumber/api');
 
 async function main() {
     const { runConfiguration } = await loadConfiguration({
-        provided: { dryRun: true, format: [] },
+        // Validate every feature, including tag-filtered ones like @db
+        provided: { dryRun: true, format: [], tags: '', parallel: 0, retry: 0 },
     });
 
     const problems = [];
