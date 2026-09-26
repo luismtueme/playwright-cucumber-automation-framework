@@ -12,7 +12,8 @@ Automated testing workflow that runs on every pull request to `main`, every push
 | Job | Runs on | What it does |
 |-----|---------|--------------|
 | `Checks` | PRs and pushes | ESLint and Prettier, strict type check, `npm audit --audit-level=high`, framework unit tests, step validation (fails on undefined or ambiguous steps), Playwright spec discovery |
-| `Tests` | PRs and pushes | Playwright specs, then Cucumber scenarios, headless, with a MySQL service container for `@db` scenarios. Then fails if any test left rows in the database. Fails if any test fails |
+| `Tests` | PRs and pushes | Playwright specs, then Cucumber scenarios, headless, with a MySQL service container for `@db` scenarios. Then `@quarantine` tests in a non-blocking step, and a check that fails if any test left rows in the database. Fails if any test fails |
+| `Visual` | PRs and pushes | Screenshot comparison inside the Playwright Docker image (`npm run test:visual`). Uploads expected/actual/diff images on failure |
 | `Publish Allure Report` | Pushes to `main` only | Builds the Allure report (with trend history) and deploys it to GitHub Pages |
 
 `Checks` and `Tests` are the required status checks for merging into `main`. PR runs never publish a report and need no secrets.

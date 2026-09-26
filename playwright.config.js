@@ -11,6 +11,12 @@ const { AUTH_FILE } = require('./utils/authState');
 const DEVICES = { chromium: 'Desktop Chrome', firefox: 'Desktop Firefox', webkit: 'Desktop Safari' };
 const baseURL = config.baseUrl || `http://127.0.0.1:${config.demoAppPort}`;
 
+if (config.visual && !config.inDocker) {
+    // Fonts and anti-aliasing differ by OS; baselines are only valid from the Docker image
+    throw new Error('Visual tests must run in Docker for stable screenshots: npm run test:visual');
+}
+const VISUAL_TESTS = /[\\/]visual[\\/]/;
+
 module.exports = defineConfig({
     testDir: './tests',
     fullyParallel: true,
@@ -18,7 +24,12 @@ module.exports = defineConfig({
     retries: config.retries,
     workers: config.workers,
     timeout: config.timeouts.test,
-    expect: { timeout: config.timeouts.expect },
+    expect: {
+        timeout: config.timeouts.expect,
+        // Docker renders identically every run, so the tolerance can be near zero
+        toHaveScreenshot: { maxDiffPixels: 10, animations: 'disabled' },
+    },
+    snapshotPathTemplate: '{testDir}/visual/__screenshots__/{testFileName}/{arg}{ext}',
     reporter: [['list'], ['allure-playwright'], ['html', { outputFolder: 'html-report', open: 'never' }]],
     use: {
         ...devices[DEVICES[config.browser]],
@@ -39,6 +50,10 @@ module.exports = defineConfig({
             name: config.browser,
             dependencies: ['setup'],
             use: { storageState: AUTH_FILE },
+            // Visual tests run only with VISUAL=true (npm run test:visual)
+            ...(config.visual ? { testMatch: VISUAL_TESTS } : { testIgnore: VISUAL_TESTS }),
+            // @quarantine tests run only with QUARANTINE=true (npm run test:quarantine)
+            ...(config.quarantine ? { grep: /@quarantine/ } : { grepInvert: /@quarantine/ }),
         },
     ],
     // Starts the bundled demo app unless BASE_URL points at a real application

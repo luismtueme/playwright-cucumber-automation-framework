@@ -20,13 +20,17 @@ Write tests as Gherkin scenarios (Cucumber), as Playwright specs, or both. The t
 | Failure evidence | Screenshot, Playwright trace and video for every failed test. Videos of passing tests are deleted |
 | Reporting | Allure with steps, attachments, trend history and failure categories (Application Bug, Flaky Test, Test Defect, Infrastructure) |
 | Type checking | Strict TypeScript checking of the JavaScript via JSDoc. Typos in page objects, fixtures and step definitions fail before any test runs |
-| Quality gates | ESLint (including Playwright rules), Prettier, type check, framework unit tests, step validation, `npm audit`, all required to merge |
+| Quality gates | ESLint (including Playwright rules), Prettier, Gherkin lint, type check, framework unit tests with coverage thresholds, step validation, `npm audit`, all required to merge |
 | Cross-browser | Every PR runs on Chromium. A nightly job runs everything on Chromium, Firefox and WebKit |
+| Accessibility | axe-core checks every page against WCAG 2.1 A/AA. Violations list the failing elements and link to the fix |
+| Visual comparison | Screenshots compared with committed baselines, rendered in Playwright's Docker image so every machine matches |
+| Flaky tests | Tag `@quarantine` (with a ticket): the test still runs and reports, but doesn't block merges |
+| Docker | `docker compose run --rm tests` runs everything, MySQL included, with no local setup beyond Docker |
 | Demo app | `demo-app/`: a small web app and JSON API the examples run against, so everything passes out of the box |
 
 ## Quick start
 
-Requires Node.js 20.12 or newer.
+Requires Node.js 22.8 or newer. Or skip the local setup entirely: `docker compose run --rm tests`.
 
 ```bash
 npm install
@@ -80,12 +84,15 @@ Invalid values fail at startup with the variable name, for example `TEST_BROWSER
 | `npm test` | Clean results, Playwright specs, then Cucumber scenarios |
 | `npm run test:playwright` | Playwright specs in `tests/` |
 | `npm run test:cucumber` | Cucumber scenarios in `features/` |
-| `npx cucumber-js --tags "@Smoke"` | Scenarios by tag. Tags in use: `@Smoke`, `@Regression`, `@ui`, `@api`, `@db`, `@authenticated` |
+| `npx cucumber-js --tags "@Smoke"` | Scenarios by tag. Allowed tags are listed in `utils/lintGherkin.js`: `@Smoke`, `@Regression`, `@ui`, `@api`, `@db`, `@authenticated`, `@a11y`, `@quarantine`, `@jira:ABC-123` |
 | `npx playwright test --grep @smoke` | Playwright specs by tag in the title |
 | `npx cucumber-js features/ui/login.feature` | One feature file |
-| `npm run test:unit` | Unit tests for the framework code (`unit/`) |
+| `npm run test:unit` | Unit tests for the framework code (`unit/`), failing below 90% line coverage |
+| `npm run test:visual` | Visual comparison in Docker. Add `-- --update` to accept new baselines |
+| `npm run test:quarantine` | Only `@quarantine` tests, in both runners |
+| `docker compose run --rm tests` | Everything in Docker with MySQL (any npm script works: `... tests npm run check`) |
 | `npm run check` | Validates every Cucumber step is defined exactly once and every spec loads. No browser |
-| `npm run lint` / `npm run format` | ESLint and Prettier check / auto-fix |
+| `npm run lint` / `npm run format` | ESLint, Prettier and Gherkin lint / auto-fix |
 | `npm run typecheck` | Strict type check of all code (no build step) |
 | `TEST_BROWSER=webkit npm test` | Everything in another browser |
 | `npm run demo` | Starts the demo app on http://127.0.0.1:4173 |
@@ -113,7 +120,8 @@ DB_HOST=127.0.0.1 DB_USER=tester DB_PASSWORD=tester DB_NAME=testdb npm run test:
 ├── tests/
 │   ├── fixtures.js           # Custom fixtures: page objects, API clients, test data factories
 │   ├── auth.setup.js         # Logs in once and saves the session for browser tests
-│   └── ui/, api/             # Playwright specs
+│   ├── ui/, api/             # Playwright specs
+│   └── visual/               # Screenshot tests and committed baselines (__screenshots__/)
 ├── unit/                     # Unit tests for the framework itself (node:test)
 ├── utils/
 │   ├── apiClient.js          # HTTP client (Playwright request API)
@@ -122,6 +130,10 @@ DB_HOST=127.0.0.1 DB_USER=tester DB_PASSWORD=tester DB_NAME=testdb npm run test:
 │   ├── steps.js              # Typed Given/When/Then (this = World)
 │   ├── authState.js          # Saved login session for both runners
 │   ├── checkLeftoverData.js  # Fails CI if tests left rows in the database
+│   ├── accessibility.js      # axe-core WCAG checks
+│   ├── lintGherkin.js        # Gherkin conventions (npm run lint)
+│   ├── visual.js             # Runs visual tests in the Playwright Docker image
+│   ├── runQuarantine.js      # Runs @quarantine tests in both runners
 │   ├── logger.js             # Leveled logger (LOG_LEVEL)
 │   ├── allureMetadata.js     # Report environment, executor and categories
 │   ├── allureCategories.js   # Failure categories
@@ -129,6 +141,7 @@ DB_HOST=127.0.0.1 DB_USER=tester DB_PASSWORD=tester DB_NAME=testdb npm run test:
 │   └── validateSteps.js      # Undefined/ambiguous step check (npm run check)
 ├── playwright.config.js
 ├── cucumber.js
+├── Dockerfile, docker-compose.yml
 └── .env.example              # Every supported variable
 ```
 
@@ -225,6 +238,20 @@ class LoginPage extends BasePage {
 
 Expose locators and user actions, and keep `expect` out of page objects so a failure points at the test that made the claim.
 
+### Accessibility checks
+
+Add a row to `features/ui/accessibility.feature` (and a line to `tests/ui/accessibility.spec.js`) for each new page. In any scenario you can also add `Then the page has no accessibility violations`, and in any spec call the `checkAccessibility()` fixture. To skip something you don't control, pass `{ exclude: ['#third-party-widget'] }`; to skip a rule, pass `{ disableRules: ['color-contrast'] }` with a comment saying why.
+
+### Visual comparison
+
+Specs in `tests/visual/` compare screenshots with baselines in `tests/visual/__screenshots__/`. They run only through `npm run test:visual`, which uses the Playwright Docker image so fonts and anti-aliasing match everywhere (running them outside Docker is refused). After an intended UI change, run `npm run test:visual -- --update` and review the new images in the PR. Mask anything that changes between runs with `mask: [locator]`.
+
+### Quarantining a flaky test
+
+1. Open a ticket, then tag the test: `@quarantine @jira:QA-123` on a scenario, or add `@quarantine` and the ticket to a spec's title.
+2. It no longer runs in the normal suite. CI runs it in a separate, non-blocking step, so its results still appear in the report.
+3. Fix it and remove the tag. The Gherkin linter rejects `@quarantine` without a ticket.
+
 ## Reporting
 
 Both runners write to `allure-results/`, and `npm run report` builds one report from both.
@@ -242,12 +269,15 @@ In CI, the report for every push to `main` is published to GitHub Pages with tre
 
 | Job | Runs |
 |---|---|
-| Checks | Lint and format, type check, `npm audit` (high and critical), unit tests, step and spec validation |
-| Tests | Both suites against the demo app, backed by a MySQL service container, then a check that no test data was left behind |
+| Checks | Lint, format and Gherkin lint, type check, `npm audit` (high and critical), unit tests with coverage thresholds, step and spec validation |
+| Tests | Both suites against the demo app, backed by a MySQL service container. Then quarantined tests (non-blocking) and a check that no test data was left behind |
+| Visual | Screenshot comparison in the Playwright Docker image. Uploads expected/actual/diff images on failure |
 | Publish Allure Report | On `main` only: builds the report and deploys it to GitHub Pages |
 | Nightly Cross-Browser | Daily at 06:00 UTC (and on demand): everything on Chromium, Firefox and WebKit. Not required to merge |
 
 `main` is protected: changes need a PR with Checks and Tests passing. Dependabot opens weekly update PRs. See [.github/GITHUB_ACTIONS_GUIDE.md](.github/GITHUB_ACTIONS_GUIDE.md) for setup in your own repository.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to make changes, and [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## License
 

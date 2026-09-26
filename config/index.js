@@ -128,6 +128,11 @@ function buildConfig(env, defaults) {
             : null,
         jiraBaseUrl: (env.JIRA_BASE_URL || '').replace(/\/+$/, ''),
         logLevel: env.LOG_LEVEL || (isCI ? 'info' : 'warn'),
+        // Run only @quarantine tests (flaky tests that report but don't block merges)
+        quarantine: parseBoolean('QUARANTINE', env.QUARANTINE, false),
+        // Run only visual tests; they must run in Docker (npm run test:visual) for stable pixels
+        visual: parseBoolean('VISUAL', env.VISUAL, false),
+        inDocker: parseBoolean('IN_DOCKER', env.IN_DOCKER, false),
     });
 }
 

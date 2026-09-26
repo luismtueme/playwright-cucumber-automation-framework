@@ -3,6 +3,7 @@
  * playwright.config.js.
  *
  * Tags: @db scenarios run only when a database is configured (DB_HOST).
+ * @quarantine scenarios are skipped, and run on their own with npm run test:quarantine.
  * Add your own filter with: npx cucumber-js --tags "@Smoke"
  */
 const { config } = require('./config');
@@ -27,7 +28,9 @@ module.exports = {
             ['allure-cucumberjs/reporter', 'allure-results/.cucumber-reporter.log'],
         ],
         formatOptions: { snippetInterface: 'async-await', links },
-        tags: config.db ? '' : 'not @db',
+        tags: [config.quarantine ? '@quarantine' : 'not @quarantine', config.db ? '' : 'not @db']
+            .filter(Boolean)
+            .join(' and '),
         parallel: config.workers,
         retry: config.retries,
         strict: true,
