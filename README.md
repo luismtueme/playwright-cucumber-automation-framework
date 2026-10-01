@@ -4,6 +4,8 @@ UI, API and database test automation with [Playwright](https://playwright.dev) a
 
 Write tests as Gherkin scenarios (Cucumber), as Playwright specs, or both. The two runners share one configuration, the same page objects and the same API client, so a test behaves the same whichever way it's written.
 
+New here? Start with the [run guide](docs/GUIDE.md).
+
 [![Playwright Tests](https://github.com/luismtueme/playwright-cucumber-automation-framework/actions/workflows/playwright.yml/badge.svg)](https://github.com/luismtueme/playwright-cucumber-automation-framework/actions/workflows/playwright.yml) · [Latest Allure report](https://luismtueme.github.io/playwright-cucumber-automation-framework/allure-report/)
 
 ## Which repo should I use?
@@ -36,12 +38,12 @@ This is one of four versions of the same framework. They share the design and th
 | Accessibility | axe-core checks every page against WCAG 2.1 A/AA. Violations list the failing elements and link to the fix |
 | Visual comparison | Screenshots compared with committed baselines, rendered in Playwright's Docker image so every machine matches |
 | Flaky tests | Tag `@quarantine` (with a ticket): the test still runs and reports, but doesn't block merges |
-| Docker | `docker compose run --rm tests` runs everything, MySQL included, with no local setup beyond Docker |
+| Docker | `docker compose run --build --rm tests` runs everything, MySQL included, with no local setup beyond Docker |
 | Demo app | `demo-app/`: a small web app and JSON API the examples run against, so everything passes out of the box |
 
 ## Quick start
 
-Requires Node.js 22.8 or newer. Or skip the local setup entirely: `docker compose run --rm tests`.
+Requires Node.js 22.8 or newer. Or skip the local setup entirely: `docker compose run --build --rm tests`.
 
 ```bash
 npm install
@@ -97,17 +99,17 @@ Invalid values fail at startup with the variable name, for example `TEST_BROWSER
 | `npm run test:cucumber` | Cucumber scenarios in `features/` |
 | `npx cucumber-js --tags "@Smoke"` | Scenarios by tag. Allowed tags are listed in `utils/lintGherkin.js`: `@Smoke`, `@Regression`, `@ui`, `@api`, `@db`, `@authenticated`, `@a11y`, `@quarantine`, `@jira:ABC-123` |
 | `npx playwright test --grep @smoke` | Playwright specs by tag in the title |
-| `npx cucumber-js features/ui/login.feature` | One feature file |
+| `npx cucumber-js --name "Log in"` | Scenarios whose name matches. A feature file path doesn't narrow the run (Cucumber adds it to the configured paths), so filter by name or tag |
 | `npm run test:unit` | Unit tests for the framework code (`unit/`), failing below 90% line coverage |
 | `npm run test:visual` | Visual comparison in Docker. Add `-- --update` to accept new baselines |
 | `npm run test:quarantine` | Only `@quarantine` tests, in both runners |
-| `docker compose run --rm tests` | Everything in Docker with MySQL (any npm script works: `... tests npm run check`) |
+| `docker compose run --build --rm tests` | Everything in Docker with MySQL (any npm script works: `... tests npm run check`) |
 | `npm run check` | Validates every Cucumber step is defined exactly once and every spec loads. No browser |
 | `npm run lint` / `npm run format` | ESLint, Prettier and Gherkin lint / auto-fix |
 | `npm run typecheck` | Strict type check of all code (no build step) |
 | `TEST_BROWSER=webkit npm test` | Everything in another browser |
 | `npm run demo` | Starts the demo app on http://127.0.0.1:4173 |
-| `npm run report` | Builds and opens the Allure report |
+| `npm run report` | Builds and opens the Allure report (the Allure command line needs Java 8 or newer) |
 
 `@db` scenarios run only when `DB_HOST` is set. To run them locally:
 
